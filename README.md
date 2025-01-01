@@ -11,7 +11,9 @@ relevant materials to do the RAG.
 
 # How to use
 - clone the repo
+- `pip install -r requirements.txt`
 - `pip install -e .`
+- go to another window, run `dl`
 
 ### The following env are required/optional to be set
 - `export dl_openai_key=<your key>` required
