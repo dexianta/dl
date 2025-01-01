@@ -69,6 +69,7 @@ def main_menu():
                 print("required: export dl_prompt=<your prompt for RAG>")
                 print(
                     "optional: export dl_data_dir=<desired location> for internal data")
+                print("optional: export dl_top_n_chunk=<integer> (default is 30)")
 
                 green("-------- current files ---------")
                 list_files()

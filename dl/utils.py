@@ -79,13 +79,16 @@ faiss_meta_idx = []
 data_dir = './data'
 meta_path = ''
 embedding_path = ''
+top_n_chunk = 30
 
 
 def init():
-    global docs, data_dir, meta_path, embedding_path, client, prompt
+    global docs, data_dir, meta_path, embedding_path, client, prompt, top_n_chunk
     openai_key = os.getenv("dl_openai_key", "")
     if openai_key == "":
         raise Exception("dl_openai_key needs to be set")
+
+    top_n_chunk = os.getenv("dl_top_n_chunk", 30)
 
     prompt = os.getenv("dl_prompt", "")
     if prompt == "":
