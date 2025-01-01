@@ -73,9 +73,7 @@ class Docs:
 
 docs = Docs(data=[])
 client = None
-# client = OpenAI(
-#    api_key=os.environ.get("openai_key")
-# )
+prompt = ''
 faiss_vec_idx = None
 faiss_meta_idx = []
 data_dir = './data'
@@ -84,10 +82,15 @@ embedding_path = ''
 
 
 def init():
-    global docs, data_dir, meta_path, embedding_path, client
-    openai_key = os.getenv("dl_openai_key")
+    global docs, data_dir, meta_path, embedding_path, client, prompt
+    openai_key = os.getenv("dl_openai_key", "")
     if openai_key == "":
-        raise Exception("openai_key needs to be set")
+        raise Exception("dl_openai_key needs to be set")
+
+    prompt = os.getenv("dl_prompt", "")
+    if prompt == "":
+        raise Exception("dl_prompt needs to be set")
+
     client = OpenAI(api_key=openai_key)
     data_dir = os.getenv('dl_data_dir', './data')
     meta_path = data_dir + "/meta.json"
@@ -141,6 +144,7 @@ def parse_doc(path: str) -> list[Chunk]:
 
 
 def openai_call_completion(question: str, chunks: list[ChunkRAG]) -> str:
+    global prompt
     if len(chunks) == 0:
         return "no data"
     retrieved_context = "\n".join(
@@ -151,10 +155,7 @@ def openai_call_completion(question: str, chunks: list[ChunkRAG]) -> str:
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "You are a helpful assistant that helps user write grant proposal text based on previous proposal text. "
-                    "Use the context(previous grant proposals excerpts) below to answer the user's question accurately."
-                ),
+                "content": prompt,
             },
             {
                 "role": "user",

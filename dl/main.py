@@ -52,7 +52,11 @@ def ask_question(question: str):
 
 
 def main_menu():
-    init()
+    try:
+        init()
+    except Exception as e:
+        print(f'something went wrong: {e}')
+        return
     state = "out"
     while True:
         try:
