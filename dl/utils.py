@@ -88,7 +88,7 @@ def init():
     if openai_key == "":
         raise Exception("dl_openai_key needs to be set")
 
-    top_n_chunk = os.getenv("dl_top_n_chunk", 30)
+    top_n_chunk = int(os.getenv("dl_top_n_chunk", 30))
 
     prompt = os.getenv("dl_prompt", "")
     if prompt == "":
