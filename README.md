@@ -5,5 +5,8 @@ doclib is a simple tool to add docx files (e.g. research papers, etc) and do RAG
 - provided with you custom prompt, now you can interact with your files
 
 # How to use
+- clone the repo
+- `pip install -e .`
 `export dl_openai_key=<your key>`
+`export dl_prompt=<your system prompt for all your questions>`
 `export dl_data_dir=<custom path> (by default it's ./data)`
