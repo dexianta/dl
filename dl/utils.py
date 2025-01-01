@@ -72,15 +72,26 @@ class Docs:
 
 
 docs = Docs(data=[])
-client = OpenAI(
-    api_key=os.environ.get("openai_key")
-)
+client = None
+# client = OpenAI(
+#    api_key=os.environ.get("openai_key")
+# )
 faiss_vec_idx = None
 faiss_meta_idx = []
+data_dir = './data'
+meta_path = ''
+embedding_path = ''
 
 
-def init_data():
-    global docs
+def init():
+    global docs, data_dir, meta_path, embedding_path, client
+    openai_key = os.getenv("dl_openai_key")
+    if openai_key == "":
+        raise Exception("openai_key needs to be set")
+    client = OpenAI(api_key=openai_key)
+    data_dir = os.getenv('dl_data_dir', './data')
+    meta_path = data_dir + "/meta.json"
+    embedding_path = data_dir + "/embeddings.npy"
     doc_list = read_doc_list()
     docs.set_data(doc_list)
     gray(f'init docs, exist {len(docs.data)} files')
@@ -175,9 +186,9 @@ def openai_call_embedding(chunks: list[Chunk], batch_size=50) -> list[Chunk]:
 
 
 def write_doc_list(docs: list[Doc]):
+    global data_dir, meta_path, embedding_path
     print('writing to disk...')
-    output_dir = "./data/"
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(data_dir, exist_ok=True)
     metadata = []
     embeddings = []
     for idx, doc in enumerate(docs):
@@ -188,19 +199,20 @@ def write_doc_list(docs: list[Doc]):
                 {'text': chunk.text, 'vec_idx': len(embeddings) - 1})
         metadata.append(meta)
     # write meta file
-    with open("./data/meta.json", 'w') as f:
+    with open(meta_path, 'w') as f:
         json.dump(metadata, f)
     # write embedding
     embeddings_array = np.array(embeddings, dtype=np.float32)
-    np.save('./data/embeddings.npy', embeddings_array)
+    np.save(embedding_path, embeddings_array)
 
 
 def read_doc_list() -> list[Doc]:
     gray('reading data from disk...')
+    global meta_path, embedding_path
     try:
-        with open('./data/meta.json', 'r') as f:
+        with open(meta_path, 'r') as f:
             metas = json.load(f)
-        embeddings = np.load('./data/embeddings.npy')
+        embeddings = np.load(embedding_path)
 
         docs_list = []
         for meta in metas:
@@ -237,10 +249,10 @@ def build_faiss(docs: list[Doc]) -> Tuple[faiss.IndexFlatL2, list[Tuple[int, int
 
 def search_vec(idx: faiss.IndexFlatL2, meta: list[Tuple[int, int]], query: list[float], n=30) -> Tuple[int, int, int]:
     gray('search_vec')
+    if idx is None:
+        raise Exception('faiss index not initialize')
     query = np.array(query, dtype=np.float32).reshape(1, -1)
     distances, indices = idx.search(query, n)
-    if len(distances) == 0:
-        green("no chunks retrieved")
 
     ret = []
     for dist, idx in zip(distances[0], indices[0]):

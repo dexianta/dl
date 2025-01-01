@@ -1,4 +1,4 @@
-from .utils import openai_call_embedding, Chunk
+from dl.utils import openai_call_embedding, Chunk
 
 
 def test_openai_call_embedding():

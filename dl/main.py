@@ -1,4 +1,4 @@
-from utils import docs, parse_doc, openai_call_embedding, Doc, write_doc_list, search_chunk, green, init_data, openai_call_completion, init_faiss
+from dl.utils import docs, parse_doc, openai_call_embedding, Doc, write_doc_list, search_chunk, green, init, openai_call_completion, init_faiss
 import os
 
 
@@ -14,9 +14,10 @@ def add_folder(path: str):
         for file in files:
             if file.endswith(".docx"):
                 add_file(os.path.join(root, file))
+    init_faiss()
 
 
-def add_file(path: str):
+def add_file(path: str, build_idx=False):
     global docs
     green(f'add file at: {path}')
     name = os.path.splitext(os.path.basename(path))[0]
@@ -28,7 +29,8 @@ def add_file(path: str):
     # Create a new document and add to the Docs instance
     doc = Doc(id=0, title=name, chunks=chunks)
     doc_id = docs.add_doc(doc)
-
+    if build_idx:
+        init_faiss()
     green(f"file '{name}' added successfully with ID {doc_id}.")
 
 
@@ -50,14 +52,19 @@ def ask_question(question: str):
 
 
 def main_menu():
-    init_data()
+    init()
     state = "out"
     while True:
         try:
             while True:
-                print("-------------------")
+                print("------------- Choices -----------")
                 print(
-                    "1)Add file 2)Add folder 3)Delete file 4)Ask question 5)Search chunk")
+                    "1.Add file 2.Add folder 3.Delete file 4.Ask question 5.Search chunk")
+                print('-  -  -  -  -  -  -  -  -  -  -  -')
+                print("required: export dl_openai_key=<key>")
+                print("required: export dl_prompt=<your prompt for RAG>")
+                print(
+                    "optional: export dl_data_dir=<desired location> for internal data")
 
                 green("-------- current files ---------")
                 list_files()
@@ -68,7 +75,7 @@ def main_menu():
                     case '1':
                         state = 'in'
                         path = input("Enter the file path: ").strip()
-                        add_file(path)
+                        add_file(path, True)
                     case '2':
                         state = 'in'
                         path = input("Enter the folder path: ").strip()
@@ -103,5 +110,7 @@ def main_menu():
             break
 
 
-if __name__ == "__main__":
+def main():
     main_menu()
+# if __name__ == "__main__":
+#    main_menu()

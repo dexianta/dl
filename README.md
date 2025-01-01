@@ -1,8 +1,9 @@
 # DocLib
-doclib is a tool/service to upload text (e.g. research papers, etc) and do RAG do it.
+doclib is a simple tool to add docx files (e.g. research papers, etc) and do RAG on it.
+- you can add a file or a folder of docx
+- once added, the tool chunk it with unstructured lib and send to openai to build embeddings
+- provided with you custom prompt, now you can interact with your files
 
 # How to use
-`export openai_key=<your key>`
-`python doclib.py`
-
-There will be a folder `data` under the root folder to store the internal data.
+`export dl_openai_key=<your key>`
+`export dl_data_dir=<custom path> (by default it's ./data)`

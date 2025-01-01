@@ -1,2 +1,6 @@
-src/data/*
-src/__pycache__
+dl/data/*
+dl/__pycache__
+build/
+dist/
+dl.egg-info
+
