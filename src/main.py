@@ -56,13 +56,10 @@ def main_menu():
         try:
             while True:
                 print("-------------------")
-                print("1. Add File")
-                print("2. Add Folders")
-                print("3. Delete File")
-                print("4. Ask Question")
-                print("5. Search chunk")
+                print(
+                    "1)Add file 2)Add folder 3)Delete file 4)Ask question 5)Search chunk")
 
-                print("-------------------")
+                green("-------- current files ---------")
                 list_files()
 
                 choice = input("Enter your choice: ").strip()
@@ -88,7 +85,7 @@ def main_menu():
                         state = 'in'
                         question = input("Enter question: ").strip()
                         for i, chunk in enumerate(search_chunk(question)):
-                            green(f'{i} {chunk.str()}')
+                            green(f'{i}: {chunk.str()}\n-----')
                     case _:
                         print("pick again")
         except (KeyboardInterrupt, EOFError) as e:

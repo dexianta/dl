@@ -16,7 +16,7 @@ class ChunkRAG:
     doc_title: str
 
     def str(self) -> str:
-        return f'{self.text} (from: {self.doc_title})'
+        return f'{self.text}\nfrom: {self.doc_title})'
 
 
 @dataclass
@@ -235,7 +235,7 @@ def build_faiss(docs: list[Doc]) -> Tuple[faiss.IndexFlatL2, list[Tuple[int, int
     return idx, meta
 
 
-def search_vec(idx: faiss.IndexFlatL2, meta: list[Tuple[int, int]], query: list[float], n=20) -> Tuple[int, int, int]:
+def search_vec(idx: faiss.IndexFlatL2, meta: list[Tuple[int, int]], query: list[float], n=30) -> Tuple[int, int, int]:
     gray('search_vec')
     query = np.array(query, dtype=np.float32).reshape(1, -1)
     distances, indices = idx.search(query, n)
