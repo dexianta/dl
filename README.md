@@ -1,5 +1,6 @@
 # DocLib
 doclib is a simple tool to add docx files (e.g. research papers, etc) and do RAG on it.
+- this tool is meant to be used on a single machine
 - you can add a file or a folder of docx
 - once added, the tool chunk it with unstructured lib and send to openai to build embeddings
 - provided with you custom prompt, now you can interact with your files
