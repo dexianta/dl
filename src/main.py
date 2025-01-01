@@ -1,4 +1,4 @@
-from utils import docs, parse_doc, openai_call_embedding, Doc, write_doc_list, read_doc_list, search_chunk, green, init_data, openai_call_completion, init_faiss
+from utils import docs, parse_doc, openai_call_embedding, Doc, write_doc_list, search_chunk, green, init_data, openai_call_completion, init_faiss
 import os
 
 
