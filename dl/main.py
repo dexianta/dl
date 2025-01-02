@@ -62,7 +62,7 @@ def main_menu():
         try:
             while True:
                 print("------------- Choices -----------")
-                print(
+                green(
                     "1.Add file 2.Add folder 3.Delete file 4.Ask question 5.Search chunk")
                 print('-  -  -  -  -  -  -  -  -  -  -  -')
                 print("required: export dl_openai_key=<key>")

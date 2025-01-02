@@ -16,7 +16,7 @@ class ChunkRAG:
     doc_title: str
 
     def str(self) -> str:
-        return f'{self.text}\nfrom: {self.doc_title})'
+        return f'{self.text}\n(from: {self.doc_title})'
 
 
 @dataclass
