@@ -4,6 +4,7 @@ import os
 
 def list_files():
     global docs
+    green(f"------ current files ({len(docs.data)}) -------")
     for doc in docs.data:
         green(f"{doc.id}. {doc.title}")
     print()
@@ -74,7 +75,6 @@ def main_menu():
                     "optional: export dl_data_dir=<desired location (./data by default)> for internal data")
                 print("optional: export dl_top_n_chunk=<integer> (default is 30)")
 
-                green("-------- current files ---------")
                 list_files()
 
                 choice = input("Enter your choice: ").strip()
