@@ -57,6 +57,12 @@ class Docs:
         max_id = max(doc.id for doc in self.data)
         return max_id + 1
 
+    def exist(self, name: str) -> bool:
+        for doc in self.data:
+            if doc.title == name:
+                return True
+        return False
+
     def add_doc(self, doc: Doc) -> int:
         doc.id = self.next_id()
         self.data.append(doc)
@@ -281,6 +287,10 @@ def search_chunk(question: str) -> list[ChunkRAG]:
         retrived.append(chunk.to_rag(doc.title))
     gray(f'{len(retrived)} chunks retrived')
     return retrived
+
+
+def yellow(msg: str):
+    print(f"\033[33m{msg}\033[0m")
 
 
 def gray(msg: str):

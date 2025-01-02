@@ -1,4 +1,4 @@
-from dl.utils import docs, parse_doc, openai_call_embedding, Doc, write_doc_list, search_chunk, green, init, openai_call_completion, init_faiss
+from dl.utils import docs, parse_doc, openai_call_embedding, Doc, write_doc_list, search_chunk, green, init, openai_call_completion, init_faiss, yellow
 import os
 
 
@@ -21,6 +21,9 @@ def add_file(path: str, build_idx=False):
     global docs
     green(f'add file at: {path}')
     name = os.path.splitext(os.path.basename(path))[0]
+    if docs.exist(name):
+        yellow(f'{name} already exist, skipping..')
+        return
     chunks = parse_doc(path)
 
     # Call OpenAI API to get vector embeddings
@@ -68,7 +71,7 @@ def main_menu():
                 print("required: export dl_openai_key=<key>")
                 print("required: export dl_prompt=<your prompt for RAG>")
                 print(
-                    "optional: export dl_data_dir=<desired location> for internal data")
+                    "optional: export dl_data_dir=<desired location (./data by default)> for internal data")
                 print("optional: export dl_top_n_chunk=<integer> (default is 30)")
 
                 green("-------- current files ---------")
