@@ -4,7 +4,14 @@ setup(
     name="dl",
     version="0.1.0",
     packages=find_packages(),
-    install_requires=[],  # Add dependencies here, e.g., ["requests"]
+    install_requires=[
+        "faiss-cpu",
+        "numpy",
+        "dataclasses",
+        "openai",
+        "unstructured[docx]",
+        "pydantic",
+    ],
     entry_points={
         "console_scripts": [
             "dl=dl.main:main",
