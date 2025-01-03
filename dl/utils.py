@@ -1,8 +1,7 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Tuple
 import faiss
 import numpy as np
-import sys
 import os
 from openai import OpenAI
 from unstructured.partition.docx import partition_docx  # this import is heavy
@@ -78,7 +77,7 @@ class Docs:
 
 
 docs = Docs(data=[])
-client = None
+client: OpenAI = None
 prompt = ''
 faiss_vec_idx = None
 faiss_meta_idx = []
