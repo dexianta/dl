@@ -67,10 +67,9 @@ def main_menu():
             while True:
                 print("------------- Choices -----------")
                 green(
-                    "1.Add file 2.Add folder 3.Delete file 4.Ask question 5.Search chunk")
+                    "1.Add folder 2.Delete file 3.Ask question 4.Search chunk 5.Set Prompt")
                 print('-  -  -  -  -  -  -  -  -  -  -  -')
                 print("required: export dl_openai_key=<key>")
-                print("required: export dl_prompt=<your prompt for RAG>")
                 print(
                     "optional: export dl_data_dir=<desired location (./data by default)> for internal data")
                 print("optional: export dl_top_n_chunk=<integer> (default is 30)")
@@ -82,25 +81,29 @@ def main_menu():
                 match choice:
                     case '1':
                         state = 'in'
-                        path = input("Enter the file path: ").strip()
-                        add_file(path, True)
-                    case '2':
-                        state = 'in'
-                        path = input("Enter the folder path: ").strip()
+                        path = input(
+                            "Enter the folder path (duplicate files won't be added): ").strip()
                         add_folder(path)
-                    case '3':
+                    case '2':
                         state = 'in'
                         idx = input("Enter idx to delete: ").strip()
                         delete_file(int(idx))
-                    case '4':
+                    case '3':
                         state = 'in'
                         question = input("Enter question: ").strip()
                         ask_question(question)
-                    case '5':
+                    case '4':
                         state = 'in'
                         question = input("Enter question: ").strip()
                         for i, chunk in enumerate(search_chunk(question)):
                             green(f'{i}: {chunk.str()}\n-----')
+                    case '5':
+                        state = 'in'
+                        global prompt
+                        green('---- current prompt ----')
+                        green(prompt)
+                        question = input("Enter new prompt: ").strip()
+                        prompt = question
                     case _:
                         print("pick again")
         except (KeyboardInterrupt, EOFError) as e:

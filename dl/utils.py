@@ -95,7 +95,14 @@ def init():
 
     top_n_chunk = int(os.getenv("dl_top_n_chunk", 30))
 
-    prompt = os.getenv("dl_prompt", "")
+    default_prompt = """
+    you're a helpful assistant that help user do RAG on their uploaded documents, 
+    you will be provided a list of chunks of documents along with their question, 
+    and answer user's question accurately based on these chunks.
+
+    chunk structure: <text> (from: <document name>)
+    """
+    prompt = os.getenv("dl_prompt", default_prompt)
     if prompt == "":
         raise Exception("dl_prompt needs to be set")
 
