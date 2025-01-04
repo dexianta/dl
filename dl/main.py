@@ -1,4 +1,4 @@
-from dl.utils import docs, parse_doc, openai_call_embedding, Doc, write_doc_list, search_chunk, green, init, openai_call_completion, init_faiss, yellow
+from dl.utils import docs, parse_doc, openai_call_embedding, Doc, set_prompt, write_doc_list, search_chunk, green, init, openai_call_completion, init_faiss, yellow, get_prompt, set_prompt
 import os
 
 
@@ -99,11 +99,10 @@ def main_menu():
                             green(f'{i}: {chunk.str()}\n-----')
                     case '5':
                         state = 'in'
-                        global prompt
                         green('---- current prompt ----')
-                        green(prompt)
+                        green(get_prompt())
                         question = input("Enter new prompt: ").strip()
-                        prompt = question
+                        set_prompt(question)
                     case _:
                         print("pick again")
         except (KeyboardInterrupt, EOFError) as e:

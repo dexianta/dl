@@ -87,6 +87,16 @@ embedding_path = ''
 top_n_chunk = 30
 
 
+def set_prompt(new_prompt: str):
+    global prompt
+    prompt = new_prompt
+
+
+def get_prompt() -> str:
+    global prompt
+    return prompt
+
+
 def init():
     global docs, data_dir, meta_path, embedding_path, client, prompt, top_n_chunk
     openai_key = os.getenv("dl_openai_key", "")
