@@ -21,3 +21,7 @@ relevant materials to do the RAG.
 - optional `export dl_prompt=<your system prompt for all your questions>` 
 - optional `export dl_data_dir=<custom path> (by default it's ./data)` 
 - optional `export dl_top_n_chunk=<the number to retrive the top n chunks>` 
+
+TODO:
+- save convo history
+- thread / topic scope
