@@ -19,7 +19,6 @@ relevant materials to do the RAG.
 ### The following env are required/optional to be set
 - required `export dl_openai_key=<your key>` 
 - optional `export dl_prompt=<your system prompt for all your questions>` 
-- optional `export dl_data_dir=<custom path> (by default it's ./data)` 
 - optional `export dl_top_n_chunk=<the number to retrive the top n chunks>` 
 
 TODO:

@@ -11,6 +11,8 @@ setup(
         "openai",
         "unstructured[docx]",
         "pydantic",
+        "fastapi",
+        "uvicorn",
     ],
     entry_points={
         "console_scripts": [

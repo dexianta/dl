@@ -1,4 +1,6 @@
 from dl.utils import docs, parse_doc, openai_call_embedding, Doc, set_prompt, write_doc_list, search_chunk, green, init, openai_call_completion, init_faiss, yellow, get_prompt, set_prompt
+from dl.http import app
+import uvicorn
 import os
 
 
@@ -120,7 +122,14 @@ def main_menu():
             break
 
 
+def run_server():
+    try:
+        init()
+    except Exception as e:
+        print(f'something went wrong: {e}')
+        return
+    uvicorn.run(app, host="127.0.0.1", port=8000)
+
+
 def main():
-    main_menu()
-# if __name__ == "__main__":
-#    main_menu()
+    run_server()

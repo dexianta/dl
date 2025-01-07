@@ -1,4 +1,6 @@
 faiss-cpu
+fastapi
+uvicorn
 numpy
 dataclasses
 openai

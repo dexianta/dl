@@ -117,7 +117,7 @@ def init():
         raise Exception("dl_prompt needs to be set")
 
     client = OpenAI(api_key=openai_key)
-    data_dir = os.getenv('dl_data_dir', './data')
+    data_dir = f'{os.path.expanduser("~")}/.dl/data'
     meta_path = data_dir + "/meta.json"
     embedding_path = data_dir + "/embeddings.npy"
     doc_list = read_doc_list()
