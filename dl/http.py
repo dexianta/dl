@@ -7,11 +7,7 @@ import signal
 
 app = FastAPI()
 
-# Simulate a file list and chat history
-file_list = ["file1.txt", "file2.txt", "file3.txt"]
 
-
-# Root route: Main menu
 @app.get("/", response_class=HTMLResponse)
 async def main_menu():
     return html_template(f"""
@@ -28,7 +24,6 @@ async def main_menu():
     """)
 
 
-# Route to manage files (Docs in this case)
 @app.get("/files", response_class=HTMLResponse)
 async def manage_files():
     global data
@@ -52,8 +47,6 @@ async def manage_files():
                 <button type="submit">Add</button>
             </form>
             """)
-
-# Route: Delete a file
 
 
 @app.post("/delete-file")
@@ -99,7 +92,6 @@ async def set_prompt():
 
 @app.post("/reset-chat", response_class=HTMLResponse)
 async def reset_chat():
-    # Simulated response
     global data
     data.state.chat_history = []
     return RedirectResponse("/ask-question", status_code=303)
@@ -107,7 +99,6 @@ async def reset_chat():
 
 @app.post("/reset-prompt", response_class=HTMLResponse)
 async def reset_prompt():
-    # Simulated response
     global data
     data.state.prompt = utils.default_prompt
     return RedirectResponse("/set-prompt", status_code=303)
@@ -115,7 +106,6 @@ async def reset_prompt():
 
 @app.post("/set-prompt-do", response_class=HTMLResponse)
 async def set_prompt_return(prompt: str = Form(...)):
-    # Simulated response
     global data
     data.state.prompt = prompt
     return RedirectResponse("/set-prompt", status_code=303)
@@ -135,10 +125,8 @@ async def search_chunk():
     )
 
 
-# Route: Search results
 @app.post("/search-results", response_class=HTMLResponse)
 async def search_results(query: str = Form(...)):
-    # Simulated response
     ret = utils.search_chunk(query)
     results = [r.str() for r in ret]
     results_html = "".join(f"<li>{result}</li>" for result in results)
@@ -148,7 +136,6 @@ async def search_results(query: str = Form(...)):
     """)
 
 
-# Route: Ask question
 @app.get("/ask-question", response_class=HTMLResponse)
 async def ask_question():
     chat_html = "".join(
@@ -169,13 +156,11 @@ async def ask_question():
     """)
 
 
-# Route: Submit question
 @app.post("/submit-question", response_class=HTMLResponse)
 async def submit_question(query: str = Form(...)):
     answer = utils.ask_question(query)
     utils.data.state.chat_history.append("usr: " + query)
     utils.data.state.chat_history.append("sys: " + answer)
-    # append to chat history
     return RedirectResponse("/ask-question", status_code=303)
 
 
@@ -185,12 +170,9 @@ def shutdown_event():
     write_data(data)
 
 
-# Route: Shutdown the server
 @app.post("/shutdown")
 async def shutdown():
     os.kill(os.getpid(), signal.SIGINT)  # Gracefully shut down
-
-    # Helper: HTML template with modern font
 
 
 def html_template(content):
