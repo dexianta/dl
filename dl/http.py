@@ -11,7 +11,7 @@ app = FastAPI()
 @app.get("/", response_class=HTMLResponse)
 async def main_menu():
     return html_template(f"""
-        <h1>Main Menu</h1>
+        <h1>File RAG, yooo</h1>
         <ul>
             <li><a href="/files">Manage Files</a></li>
             <li><a href="/set-prompt">Set Prompt</a></li>
