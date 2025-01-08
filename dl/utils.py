@@ -315,3 +315,16 @@ def gray(msg: str):
 
 def green(msg: str):
     print(f"\033[32m{msg}\033[0m")
+
+def add_uploaded_file(name: str, content: bytes):
+    global docs
+    chunks = parse_docx(content)
+
+    # Call OpenAI API to get vector embeddings
+    chunks = openai_call_embedding(chunks)
+
+    # Create a new document and add to the Docs instance
+    doc = Doc(id=0, title=name, chunks=chunks)
+    _ = docs.add_doc(doc)
+    init_faiss()
+

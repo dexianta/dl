@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Form, Request
+from dl.main import add_uploaded_file
+from fastapi import FastAPI, Form, File, UploadFile
 from dl.utils import docs
 from fastapi.responses import HTMLResponse, RedirectResponse
 import os
@@ -45,11 +46,11 @@ async def manage_files():
     return html_template(f"""
             <h1> Manage Docs </h1>
             <ul> {docs_html} </ul>
-            <form action="/add-doc" method="post">
-                <label for ="title"> Add Doc (Enter Title): </label>
-                <input type="text" id="title" name="title">
-                <button type="submit"> Add </button>
-            </ form>
+             <form action="/add-doc" method="post" enctype="multipart/form-data">
+                <label for="file">Add Doc (Select File):</label><br>
+                <input type="file" id="file" name="file" style=""><br>
+                <button type="submit">Add</button>
+            </form>
             <a href="/"> Go Back </a>""")
 
 # Route: Delete a file
@@ -64,15 +65,23 @@ async def delete_file(index: int = Form(...)):
     return RedirectResponse("/files", status_code=303)
 
 
-# Route: Add a file
-@app.post("/add-file")
-async def add_file(path: str = Form(...)):
-    # Just store the path for now
-    file_list.append(path)
+@app.post("/add-doc")
+async def add_doc(file: UploadFile = File(...)):
+    # Get the file name
+    file_name = file.filename
+
+    # Read the file content as bytes
+    file_content = await file.read()
+
+    print('adding doc..', 'name: ', file_name, 'bytes: ', len(file_content))
+
+    add_uploaded_file(file_name, file_content)
+
     return RedirectResponse("/files", status_code=303)
 
-
 # Route: Search chunk
+
+
 @app.get("/chunk-search", response_class=HTMLResponse)
 async def search_chunk():
     return html_template(f"""

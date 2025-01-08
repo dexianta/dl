@@ -1,4 +1,4 @@
-from dl.utils import docs, parse_doc, openai_call_embedding, Doc, set_prompt, write_doc_list, search_chunk, green, init, openai_call_completion, init_faiss, yellow, get_prompt, set_prompt
+from dl.utils import docs, parse_doc, openai_call_embedding, Doc, parse_docx, set_prompt, write_doc_list, search_chunk, green, init, openai_call_completion, init_faiss, yellow, get_prompt, set_prompt
 from dl.http import app
 import uvicorn
 import os
@@ -18,6 +18,7 @@ def add_folder(path: str):
             if file.endswith(".docx"):
                 add_file(os.path.join(root, file))
     init_faiss()
+
 
 
 def add_file(path: str, build_idx=False):
