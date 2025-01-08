@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Optional
 import faiss
 import numpy as np
 import os
@@ -45,10 +45,11 @@ class Doc:
 class Docs:
     data: list[Doc]
 
-    def get(self, id: int) -> Doc:
+    def get(self, id: int) -> Optional[Doc]:
         for d in self.data:
             if d.id == id:
                 return d
+        return None
 
     def next_id(self) -> int:
         if len(self.data) == 0:
@@ -316,6 +317,7 @@ def gray(msg: str):
 def green(msg: str):
     print(f"\033[32m{msg}\033[0m")
 
+
 def add_uploaded_file(name: str, content: bytes):
     global docs
     chunks = parse_docx(content)
@@ -327,4 +329,3 @@ def add_uploaded_file(name: str, content: bytes):
     doc = Doc(id=0, title=name, chunks=chunks)
     _ = docs.add_doc(doc)
     init_faiss()
-

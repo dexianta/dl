@@ -20,7 +20,6 @@ def add_folder(path: str):
     init_faiss()
 
 
-
 def add_file(path: str, build_idx=False):
     global docs
     green(f'add file at: {path}')

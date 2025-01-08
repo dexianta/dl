@@ -1,4 +1,4 @@
-from dl.main import add_uploaded_file
+from dl.utils import add_uploaded_file
 from fastapi import FastAPI, Form, File, UploadFile
 from dl.utils import docs
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -34,7 +34,7 @@ async def manage_files():
     global docs
     docs_html = "".join(
         f"""<li>
-        <form style="display: inline;" action="/delete-doc" method="post">
+        <form style="display: inline;" action="/delete-file" method="post">
             <input type="hidden" name="id" value="{doc.id}">
             <button type="submit">x</button>
         </form>
@@ -44,10 +44,10 @@ async def manage_files():
         for doc in docs.data
     )
     return html_template(f"""
-            <h1> Manage Docs </h1>
+            <h1> Manage Files</h1>
             <ul> {docs_html} </ul>
-             <form action="/add-doc" method="post" enctype="multipart/form-data">
-                <label for="file">Add Doc (Select File):</label><br>
+             <form action="/add-file" method="post" enctype="multipart/form-data">
+                <label for="file">Add File (Select File):</label><br>
                 <input type="file" id="file" name="file" style=""><br>
                 <button type="submit">Add</button>
             </form>
@@ -57,23 +57,20 @@ async def manage_files():
 
 
 @app.post("/delete-file")
-async def delete_file(index: int = Form(...)):
-    try:
-        del file_list[index]
-    except IndexError:
-        pass  # Ignore invalid index
+async def delete_file(id: int = Form(...)):
+    print('deleting file.. id:', id)
     return RedirectResponse("/files", status_code=303)
 
 
-@app.post("/add-doc")
-async def add_doc(file: UploadFile = File(...)):
+@app.post("/add-file")
+async def add_file(file: UploadFile = File(...)):
     # Get the file name
     file_name = file.filename
 
     # Read the file content as bytes
     file_content = await file.read()
 
-    print('adding doc..', 'name: ', file_name, 'bytes: ', len(file_content))
+    print('adding file..', 'name: ', file_name, 'bytes: ', len(file_content))
 
     add_uploaded_file(file_name, file_content)
 
