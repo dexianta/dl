@@ -349,9 +349,9 @@ def add_uploaded_file(name: str, content: bytes):
 def delete_file(idx: int):
     global data
     change = False
-    for i, doc in enumerate(data.data):
+    for i, doc in enumerate(data.docs):
         if doc.id == idx:
-            del data.data[i]
+            del data.docs[i]
             change = True
     if change:
         init_faiss()

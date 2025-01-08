@@ -41,10 +41,10 @@ async def manage_files():
     return html_template(f"""
             <h1> Manage Files</h1>
             <ul> {docs_html} </ul>
-             <form action="/add-file" method="post" enctype="multipart/form-data">
+             <form id="uploadForm" action="/add-file" method="post" enctype="multipart/form-data">
                 <label for="file">Add File (Select File):</label><br>
                 <input type="file" id="file" name="file" style=""><br>
-                <button type="submit">Add</button>
+                <button id="submitButton" type="submit">Add</button>
             </form>
             """)
 
@@ -116,10 +116,10 @@ async def search_chunk():
     return html_template(
         """
         <h1>Search Chunk</h1>
-        <form action="/search-results" method="post">
+        <form id="uploadForm" action="/search-results" method="post">
             <label for="query">Enter Search Query:</label>
             <textarea id="query" name="query" rows="5" cols="40"></textarea>
-            <button type="submit">Search</button>
+            <button id="submitButton" type="submit">Search</button>
         </form>
     """
     )
@@ -145,10 +145,10 @@ async def ask_question():
     return html_template(f"""
         <h1> Ask a Question </h1>
         <div> {chat_html} </div>
-        <form action="/submit-question" method="post">
+        <form id="uploadForm" action="/submit-question" method="post">
             <label for="query">Enter your question:</label>
             <textarea id="query" name="query" rows="5" cols="40"></textarea>
-            <button type="submit">Search</button>
+            <button id="submitButton" type="submit">Search</button>
         </form>
         <form action="/reset-chat" method="post">
             <button type="submit">reset</button>
@@ -216,6 +216,12 @@ def html_template(content):
                     border-radius: 5px;
                     cursor: pointer;
                 }}
+                button:disabled {{
+                background-color: #ccc;
+                    color: #666;
+                    cursor: not-allowed;
+                    opacity: 0.7;
+                }}
                 button:hover {{
                     background-color: #3498db;
                 }}
@@ -234,24 +240,42 @@ def html_template(content):
         </head>
         <body>
             {content}
-            {query_script}
+            {script}
         </body>
         <a href="/">Go Back</a>
     </html>
     """
 
 
-query_script = """
+script = """
     <script>
-        document.getElementById("query").addEventListener('keydown', function(event) {
-        if (event.key === 'Enter') {
-            event.preventDefault()
-            const start = this.selectionStart
-            const end = this.selectionEnd
-            this.value = this.value.substring(0, start) + "\\n" + this.value.substring(end)
-            this.selectionStart = this.selectionEnd = start + 1
+        const query = document.getElementById("query");
+        if (query) {
+            query.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault()
+                    const start = this.selectionStart
+                    const end = this.selectionEnd
+                    this.value = this.value.substring(0, start) + "\\n" + this.value.substring(end)
+                    this.selectionStart = this.selectionEnd = start + 1
+                }
+            });
         }
-    }
-    );
+
+        const form = document.getElementById('uploadForm');
+        const submitButton = document.getElementById('submitButton');
+
+        if (form && submitButton) {
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                submitButton.disabled = true;
+                form.submit()
+            });
+        }
     </script>
 """
+
+upload_script = """
+<script>
+    </script>
+    """
