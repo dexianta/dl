@@ -1,6 +1,6 @@
-from dl.utils import add_uploaded_file
 from fastapi import FastAPI, Form, File, UploadFile
-from dl.utils import docs
+from dl.utils import data, write_data
+import dl.utils as utils
 from fastapi.responses import HTMLResponse, RedirectResponse
 import os
 import signal
@@ -9,7 +9,6 @@ app = FastAPI()
 
 # Simulate a file list and chat history
 file_list = ["file1.txt", "file2.txt", "file3.txt"]
-chat_history = []
 
 
 # Root route: Main menu
@@ -19,6 +18,7 @@ async def main_menu():
         <h1>Main Menu</h1>
         <ul>
             <li><a href="/files">Manage Files</a></li>
+            <li><a href="/set-prompt">Set Prompt</a></li>
             <li><a href="/chunk-search">Search Chunk</a></li>
             <li><a href="/ask-question">Ask Question</a></li>
         </ul>
@@ -31,17 +31,17 @@ async def main_menu():
 # Route to manage files (Docs in this case)
 @app.get("/files", response_class=HTMLResponse)
 async def manage_files():
-    global docs
+    global data
     docs_html = "".join(
         f"""<li>
         <form style="display: inline;" action="/delete-file" method="post">
             <input type="hidden" name="id" value="{doc.id}">
             <button type="submit">x</button>
         </form>
-        <span style="font-weight: bold;">{doc.id}</span>,
+        <span style="font-weight: bold;">{doc.id}</span>.
         <span style="font-weight: bold;">{doc.title}</span>
     </li>"""
-        for doc in docs.data
+        for doc in data.docs
     )
     return html_template(f"""
             <h1> Manage Files</h1>
@@ -51,14 +51,14 @@ async def manage_files():
                 <input type="file" id="file" name="file" style=""><br>
                 <button type="submit">Add</button>
             </form>
-            <a href="/"> Go Back </a>""")
+            """)
 
 # Route: Delete a file
 
 
 @app.post("/delete-file")
 async def delete_file(id: int = Form(...)):
-    print('deleting file.. id:', id)
+    utils.delete_file(id)
     return RedirectResponse("/files", status_code=303)
 
 
@@ -72,36 +72,79 @@ async def add_file(file: UploadFile = File(...)):
 
     print('adding file..', 'name: ', file_name, 'bytes: ', len(file_content))
 
-    add_uploaded_file(file_name, file_content)
+    utils.add_uploaded_file(file_name, file_content)
 
     return RedirectResponse("/files", status_code=303)
 
-# Route: Search chunk
+
+@app.get("/set-prompt", response_class=HTMLResponse)
+async def set_prompt():
+    global data
+    return html_template(
+        f"""
+        <h1>Set Prompt</h1>
+        <h3> Current Prompt: </h3>
+        <p> {data.state.prompt} </p>
+        <form action="/set-prompt-do" method="post">
+            <label for="query">Set your new prompt:</label>
+            <textarea id="query" name="prompt" rows="5" cols="40"></textarea>
+            <button type="submit">Set</button>
+        </form>
+        <form action="/reset-prompt" method="post">
+            <button type="submit">Reset</button>
+        </form>
+    """
+    )
+
+
+@app.post("/reset-chat", response_class=HTMLResponse)
+async def reset_chat():
+    # Simulated response
+    global data
+    data.state.chat_history = []
+    return RedirectResponse("/ask-question", status_code=303)
+
+
+@app.post("/reset-prompt", response_class=HTMLResponse)
+async def reset_prompt():
+    # Simulated response
+    global data
+    data.state.prompt = utils.default_prompt
+    return RedirectResponse("/set-prompt", status_code=303)
+
+
+@app.post("/set-prompt-do", response_class=HTMLResponse)
+async def set_prompt_return(prompt: str = Form(...)):
+    # Simulated response
+    global data
+    data.state.prompt = prompt
+    return RedirectResponse("/set-prompt", status_code=303)
 
 
 @app.get("/chunk-search", response_class=HTMLResponse)
 async def search_chunk():
-    return html_template(f"""
-        <h1> Search Chunk </h1>
+    return html_template(
+        """
+        <h1>Search Chunk</h1>
         <form action="/search-results" method="post">
-            <label for ="query"> Enter Search Query: </label>
-            <input type="text" id="query" name="query">
-            <button type="submit"> Search </button>
-        </ form>
-        <a href="/"> Go Back </a>
-    """)
+            <label for="query">Enter Search Query:</label>
+            <textarea id="query" name="query" rows="5" cols="40"></textarea>
+            <button type="submit">Search</button>
+        </form>
+    """
+    )
 
 
 # Route: Search results
 @app.post("/search-results", response_class=HTMLResponse)
 async def search_results(query: str = Form(...)):
     # Simulated response
-    results = [f"Result {i} for '{query}'" for i in range(1, 6)]
+    ret = utils.search_chunk(query)
+    results = [r.str() for r in ret]
     results_html = "".join(f"<li>{result}</li>" for result in results)
     return html_template(f"""
         <h1> Search Results </h1>
-        <ul> {results_html} </ul>
-        <a href="/chunk-search"> Go Back </a>
+        <ul style="list-style-type:disc;margin-left: 20px"> {results_html} </ul>
     """)
 
 
@@ -109,25 +152,37 @@ async def search_results(query: str = Form(...)):
 @app.get("/ask-question", response_class=HTMLResponse)
 async def ask_question():
     chat_html = "".join(
-        f"<p><strong>{user}:</strong> {message}</p>" for user, message in chat_history)
+        f"<p>{
+            msg}</p>" if msg.startswith('sys:') else f'<p style="color: gray;">{msg}</p>'
+        for msg in utils.data.state.chat_history)
     return html_template(f"""
         <h1> Ask a Question </h1>
         <div> {chat_html} </div>
         <form action="/submit-question" method="post">
-            <input type="text" name="message" placeholder="Type your message">
-            <button type="submit"> Send </button>
-        </ form>
-        <a href="/"> Go Back </a>
+            <label for="query">Enter your question:</label>
+            <textarea id="query" name="query" rows="5" cols="40"></textarea>
+            <button type="submit">Search</button>
+        </form>
+        <form action="/reset-chat" method="post">
+            <button type="submit">reset</button>
+        </form>
     """)
 
 
 # Route: Submit question
 @app.post("/submit-question", response_class=HTMLResponse)
-async def submit_question(message: str = Form(...)):
-    # Simulate bot response
-    chat_history.append(("User", message))
-    chat_history.append(("Bot", f"Response to '{message}'"))
+async def submit_question(query: str = Form(...)):
+    answer = utils.ask_question(query)
+    utils.data.state.chat_history.append("usr: " + query)
+    utils.data.state.chat_history.append("sys: " + answer)
+    # append to chat history
     return RedirectResponse("/ask-question", status_code=303)
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    print('saving data..')
+    write_data(data)
 
 
 # Route: Shutdown the server
@@ -142,11 +197,12 @@ def html_template(content):
     return f"""
     <html>
         <head>
-            <title>Minimalistic Tool</title>
+            <title>DocLib</title>
             <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
             <style>
                 body {{
                     font-family: 'Roboto', sans-serif;
+                    font-size: 24px;
                     line-height: 1.6;
                     margin: 20px;
                     color: #333;
@@ -196,6 +252,24 @@ def html_template(content):
         </head>
         <body>
             {content}
+            {query_script}
         </body>
+        <a href="/">Go Back</a>
     </html>
     """
+
+
+query_script = """
+    <script>
+        document.getElementById("query").addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault()
+            const start = this.selectionStart
+            const end = this.selectionEnd
+            this.value = this.value.substring(0, start) + "\\n" + this.value.substring(end)
+            this.selectionStart = this.selectionEnd = start + 1
+        }
+    }
+    );
+    </script>
+"""

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Tuple, Optional
 import faiss
 import numpy as np
@@ -42,47 +42,62 @@ class Doc:
 
 
 @dataclass
-class Docs:
-    data: list[Doc]
+class State:
+    prompt: str
+    chat_history: list
+
+
+@dataclass
+class Data:
+    state: State
+    docs: list[Doc]
 
     def get(self, id: int) -> Optional[Doc]:
-        for d in self.data:
+        for d in self.docs:
             if d.id == id:
                 return d
         return None
 
     def next_id(self) -> int:
-        if len(self.data) == 0:
+        if len(self.docs) == 0:
             return 0
-        max_id = max(doc.id for doc in self.data)
+        max_id = max(doc.id for doc in self.docs)
         return max_id + 1
 
     def exist(self, name: str) -> bool:
-        for doc in self.data:
+        for doc in self.docs:
             if doc.title == name:
                 return True
         return False
 
     def add_doc(self, doc: Doc) -> int:
         doc.id = self.next_id()
-        self.data.append(doc)
+        self.docs.append(doc)
         # write to local
         return doc.id
 
-    def set_data(self, data: list[Doc]):
+    def set_data(self, docs: list[Doc], state: State):
         gray('setting data for docs')
-        self.data = data
-
-    def len(self):
-        return len(self.data)
+        self.docs = docs
+        self.state = state
 
 
-docs = Docs(data=[])
+default_prompt = """
+you're a helpful assistant that help user do RAG on their uploaded documents,
+you will be provided a list of chunks of documents along with their question,
+and answer user's question accurately based on these chunks.
+
+chunk structure: text (from: document_name)
+"""
+
+
+data = Data(docs=[], state=State(prompt=default_prompt, chat_history=[]))
 client: OpenAI = None
 prompt = ''
 faiss_vec_idx = None
 faiss_meta_idx = []
-data_dir = './data'
+data_dir = ''
+state_path = ''
 meta_path = ''
 embedding_path = ''
 top_n_chunk = 30
@@ -99,20 +114,13 @@ def get_prompt() -> str:
 
 
 def init():
-    global docs, data_dir, meta_path, embedding_path, client, prompt, top_n_chunk
+    global data, data_dir, meta_path, embedding_path, state_path, client, prompt, top_n_chunk
     openai_key = os.getenv("dl_openai_key", "")
     if openai_key == "":
         raise Exception("dl_openai_key needs to be set")
 
     top_n_chunk = int(os.getenv("dl_top_n_chunk", 30))
 
-    default_prompt = """
-    you're a helpful assistant that help user do RAG on their uploaded documents, 
-    you will be provided a list of chunks of documents along with their question, 
-    and answer user's question accurately based on these chunks.
-
-    chunk structure: <text> (from: <document name>)
-    """
     prompt = os.getenv("dl_prompt", default_prompt)
     if prompt == "":
         raise Exception("dl_prompt needs to be set")
@@ -121,20 +129,21 @@ def init():
     data_dir = f'{os.path.expanduser("~")}/.dl/data'
     meta_path = data_dir + "/meta.json"
     embedding_path = data_dir + "/embeddings.npy"
-    doc_list = read_doc_list()
-    docs.set_data(doc_list)
-    gray(f'init docs, exist {len(docs.data)} files')
-    if len(docs.data) == 0:
+    state_path = data_dir + "/state.json"
+    doc_list, state = read_data()
+    data.set_data(doc_list, state)
+    gray(f'init docs, exist {len(data.docs)} files')
+    if len(data.docs) == 0:
         return
     init_faiss()
 
 
 def init_faiss():
     gray('init faiss')
-    global docs
+    global data
     global faiss_vec_idx
     global faiss_meta_idx
-    faiss_vec_idx, faiss_meta_idx = build_faiss(docs.data)
+    faiss_vec_idx, faiss_meta_idx = build_faiss(data.docs)
 
 
 def parse_docx(file: bytes) -> list[Chunk]:
@@ -170,27 +179,20 @@ def parse_doc(path: str) -> list[Chunk]:
 
 
 def openai_call_completion(question: str, chunks: list[ChunkRAG]) -> str:
-    global prompt
+    global data
     if len(chunks) == 0:
         return "no data"
     retrieved_context = "\n".join(
         [f'{chunk.text} (from: {chunk.doc_title})' for chunk in chunks])
     gray('calling completion api')
+    msgs = [{"role": "user", "content": msg[4:]} if msg.startswith('usr:') else {
+        "role": "assistant", "content": msg[4:]} for msg in data.state.chat_history]
+    msgs.insert(0, {"role": "system", "content": data.state.prompt})
+    msgs = msgs + [{"role": "user",
+                   "content": f"Context:\n{retrieved_context}\nQuestion:{question}"}]
     ret = client.chat.completions.create(
         model="gpt-4o-2024-08-06",
-        messages=[
-            {
-                "role": "system",
-                "content": prompt,
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"Context:\n{retrieved_context}\n\n"
-                    f"Question: {question}"
-                ),
-            },
-        ],)
+        messages=msgs)
     return ret.choices[0].message.content
 
 
@@ -212,19 +214,21 @@ def openai_call_embedding(chunks: list[Chunk], batch_size=50) -> list[Chunk]:
     return chunks
 
 
-def write_doc_list(docs: list[Doc]):
+def write_data(data: Data):
     global data_dir, meta_path, embedding_path
     print('writing to disk...')
     os.makedirs(data_dir, exist_ok=True)
     metadata = []
     embeddings = []
-    for idx, doc in enumerate(docs):
+    for idx, doc in enumerate(data.docs):
         meta = doc.to_meta()
         for chunk_idx, chunk in enumerate(doc.chunks):
             embeddings.append(chunk.vec)
             meta['chunks'].append(
                 {'text': chunk.text, 'vec_idx': len(embeddings) - 1})
         metadata.append(meta)
+    with open(state_path, 'w') as f:
+        json.dump(asdict(data.state), f)
     # write meta file
     with open(meta_path, 'w') as f:
         json.dump(metadata, f)
@@ -233,13 +237,24 @@ def write_doc_list(docs: list[Doc]):
     np.save(embedding_path, embeddings_array)
 
 
-def read_doc_list() -> list[Doc]:
+def read_data() -> Tuple[list[Doc], State]:
     gray('reading data from disk...')
-    global meta_path, embedding_path
+    global meta_path, embedding_path, state_path
+    metas = []
+    state = State(prompt="", chat_history=[])
     try:
-        with open(meta_path, 'r') as f:
-            metas = json.load(f)
+        if os.path.exists(meta_path):
+            with open(meta_path, 'r') as f:
+                metas = json.load(f)
+        if os.path.exists(state_path):
+            with open(state_path, 'r') as f:
+                tmp = json.load(f)
+                state = State(**tmp)
         embeddings = np.load(embedding_path)
+
+        if state.prompt == "":
+            print('setting default prompt')
+            state.prompt = default_prompt
 
         docs_list = []
         for meta in metas:
@@ -252,10 +267,10 @@ def read_doc_list() -> list[Doc]:
                 title=meta["title"],
                 chunks=chunks
             ))
-        return docs_list
+        return docs_list, state
     except Exception as e:
         print(f'error loading data from disk...: {e}')
-        return []
+        return [], state
 
 
 # meta is (doc_idx, chunk_idx)
@@ -290,7 +305,7 @@ def search_vec(idx: faiss.IndexFlatL2, meta: list[Tuple[int, int]], query: list[
 
 
 def search_chunk(question: str) -> list[ChunkRAG]:
-    global docs
+    global data
     global faiss_meta_idx
     global faiss_vec_idx
     ret = openai_call_embedding(chunks=[Chunk(text=question, vec=[])])
@@ -299,8 +314,8 @@ def search_chunk(question: str) -> list[ChunkRAG]:
     idxes = search_vec(faiss_vec_idx, faiss_meta_idx, question_vec)
     retrived = []
     for (doc_idx, chunk_idx, _) in idxes:
-        doc = docs.get(doc_idx)
-        chunk = docs.get(doc_idx).chunks[chunk_idx]
+        doc = data.get(doc_idx)
+        chunk = data.get(doc_idx).chunks[chunk_idx]
         retrived.append(chunk.to_rag(doc.title))
     gray(f'{len(retrived)} chunks retrived')
     return retrived
@@ -319,7 +334,7 @@ def green(msg: str):
 
 
 def add_uploaded_file(name: str, content: bytes):
-    global docs
+    global data
     chunks = parse_docx(content)
 
     # Call OpenAI API to get vector embeddings
@@ -327,5 +342,21 @@ def add_uploaded_file(name: str, content: bytes):
 
     # Create a new document and add to the Docs instance
     doc = Doc(id=0, title=name, chunks=chunks)
-    _ = docs.add_doc(doc)
+    _ = data.add_doc(doc)
     init_faiss()
+
+
+def delete_file(idx: int):
+    global data
+    change = False
+    for i, doc in enumerate(data.data):
+        if doc.id == idx:
+            del data.data[i]
+            change = True
+    if change:
+        init_faiss()
+
+
+def ask_question(question: str) -> str:
+    chunks = search_chunk(question)
+    return openai_call_completion(question, chunks)
