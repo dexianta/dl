@@ -210,7 +210,7 @@ def openai_call_completion(username, question: str, chunks: list[ChunkRAG]) -> s
         for msg in data.state.chat_history.get(username, [])
     ]
     msgs.insert(
-        0, {"role": "system", "content": data.state.prompt.get(username)})
+        0, {"role": "system", "content": data.state.prompt.get(username) + " (never format response, just plain text)"})
     msgs = msgs + [{"role": "user",
                    "content": f"Context:\n{retrieved_context}\nQuestion:{question}"}]
     ret = client.chat.completions.create(
