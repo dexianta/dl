@@ -37,9 +37,6 @@ async def main_menu(token: str = Query(...)):
             <li><a href="/chunk-search?token={token}">Search Chunk</a></li>
             <li><a href="/ask-question?token={token}">Ask Question</a></li>
         </ul>
-        <form action="/shutdown" method="post">
-            <button type="submit">Close Server</button>
-        </form>
     """)
 
 
