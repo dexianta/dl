@@ -98,12 +98,12 @@ async def set_prompt(token: str = Query(...)):
         <h1>Set Prompt</h1>
         <h3> Current Prompt: </h3>
         <p> {data.state.prompt} </p>
-        <form action="/set-prompt-do" method="post">
+        <form action="/set-prompt-do?token={token}" method="post">
             <label for="query">Set your new prompt:</label>
             <textarea id="query" name="prompt" rows="5" cols="40"></textarea>
             <button type="submit">Set</button>
         </form>
-        <form action="/reset-prompt" method="post">
+        <form action="/reset-prompt?token={token}" method="post">
             <button type="submit">Reset</button>
         </form>
     """
@@ -138,9 +138,9 @@ async def set_prompt_do(prompt: str = Form(...), token: str = Query(...)):
 async def search_chunk(token: str = Query(...)):
     check(token)
     return html_template(token,
-                         """
+                         f"""
         <h1>Search Chunk</h1>
-        <form id="uploadForm" action="/search-results" method="post">
+        <form id="uploadForm" action="/search-results?token={token}" method="post">
             <label for="query">Enter Search Query:</label>
             <textarea id="query" name="query" rows="5" cols="40"></textarea>
             <button id="submitButton" type="submit">Search</button>
