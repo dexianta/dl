@@ -11,21 +11,9 @@ import io
 
 
 @dataclass
-class ChunkRAG:
-    text: str
-    doc_title: str
-
-    def str(self) -> str:
-        return f'{self.text}\n(from: {self.doc_title})'
-
-
-@dataclass
 class Chunk:
     text: str
     vec: list[float]
-
-    def to_rag(self, title: str) -> ChunkRAG:
-        return ChunkRAG(text=self.text, doc_title=title)
 
 
 @dataclass
@@ -197,12 +185,12 @@ def parse_doc(path: str) -> list[Chunk]:
     return parse_docx(doc_content)
 
 
-def openai_call_completion(username, question: str, chunks: list[ChunkRAG]) -> str:
+def openai_call_completion(username, question: str, chunks: list[Chunk]) -> str:
     global data
     if len(chunks) == 0:
         return "no data"
     retrieved_context = "\n".join(
-        [f'{chunk.text} (from: {chunk.doc_title})' for chunk in chunks])
+        [f'{chunk.text}' for chunk in chunks])
     gray('calling completion api')
     msgs = [
         {"role": "user", "content": msg[4:]} if msg.startswith('usr:') else {
@@ -327,7 +315,7 @@ def search_vec(idx: faiss.IndexFlatL2, meta: list[Tuple[int, int]], query: list[
     return ret
 
 
-def search_chunk(question: str) -> list[ChunkRAG]:
+def search_chunk(question: str) -> list[Chunk]:
     global data
     global faiss_meta_idx
     global faiss_vec_idx
@@ -337,9 +325,9 @@ def search_chunk(question: str) -> list[ChunkRAG]:
     idxes = search_vec(faiss_vec_idx, faiss_meta_idx, question_vec)
     retrived = []
     for (doc_idx, chunk_idx, _) in idxes:
-        doc = data.get(doc_idx)
+        # doc = data.get(doc_idx)
         chunk = data.get(doc_idx).chunks[chunk_idx]
-        retrived.append(chunk.to_rag(doc.title))
+        retrived.append(chunk)
     gray(f'{len(retrived)} chunks retrived')
     return retrived
 
