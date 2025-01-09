@@ -300,7 +300,7 @@ def build_faiss(docs: list[Doc]) -> Tuple[faiss.IndexFlatL2, list[Tuple[int, int
     return idx, meta
 
 
-def search_vec(idx: faiss.IndexFlatL2, meta: list[Tuple[int, int]], query: list[float], n=30) -> Tuple[int, int, int]:
+def search_vec(idx: faiss.IndexFlatL2, meta: list[Tuple[int, int]], query: list[float], n=50) -> Tuple[int, int, int]:
     gray('search_vec')
     if idx is None:
         raise Exception('faiss index not initialize')
