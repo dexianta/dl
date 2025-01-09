@@ -97,7 +97,7 @@ async def set_prompt(token: str = Query(...)):
                          f"""
         <h1>Set Prompt</h1>
         <h3> Current Prompt: </h3>
-        <p> {data.state.prompt} </p>
+        <p> {data.state.prompt.get(data.get_user(token))} </p>
         <form action="/set-prompt-do?token={token}" method="post">
             <label for="query">Set your new prompt:</label>
             <textarea id="query" name="prompt" rows="5" cols="40"></textarea>
