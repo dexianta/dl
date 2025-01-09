@@ -183,8 +183,7 @@ async def ask_question(token: str = Query(...)):
 @app.post("/submit-question", response_class=HTMLResponse)
 async def submit_question(query:
                           str = Form(...), token: str = Query(...)):
-    check(token)
-    answer = utils.ask_question(query)
+    answer = utils.ask_question(check(token), query)
     utils.data.add_chat(token, "usr: " + query)
     utils.data.add_chat(token, "sys: " + answer)
     return redirect("/ask-question", token)
@@ -217,6 +216,7 @@ def check(token):
     user = data.get_user(token)
     if user == "":
         raise HTTPException(status_code=401, detail="Unauthorized")
+    return user
 
 
 def redirect(path, token):

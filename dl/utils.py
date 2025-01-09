@@ -207,15 +207,18 @@ def parse_doc(path: str) -> list[Chunk]:
     return parse_docx(doc_content)
 
 
-def openai_call_completion(question: str, chunks: list[ChunkRAG]) -> str:
+def openai_call_completion(username, question: str, chunks: list[ChunkRAG]) -> str:
     global data
     if len(chunks) == 0:
         return "no data"
     retrieved_context = "\n".join(
         [f'{chunk.text} (from: {chunk.doc_title})' for chunk in chunks])
     gray('calling completion api')
-    msgs = [{"role": "user", "content": msg[4:]} if msg.startswith('usr:') else {
-        "role": "assistant", "content": msg[4:]} for msg in data.state.chat_history]
+    msgs = [
+        {"role": "user", "content": msg[4:]} if msg.startswith('usr:') else {
+            "role": "assistant", "content": msg[4:]}
+        for msg in data.state.chat_history.get(username, [])
+    ]
     msgs.insert(0, {"role": "system", "content": data.state.prompt})
     msgs = msgs + [{"role": "user",
                    "content": f"Context:\n{retrieved_context}\nQuestion:{question}"}]
