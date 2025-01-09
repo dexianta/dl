@@ -155,7 +155,7 @@ async def search_chunk(token: str = Query(...)):
 async def search_results(token: str = Query(...), query: str = Form(...)):
     check(token)
     ret = utils.search_chunk(query)
-    results = [r.str() for r in ret]
+    results = [r.text for r in ret]
     results_html = "".join(f"<li>{result}</li>" for result in results)
     return html_template(token, f"""
         <h1> Search Results </h1>
