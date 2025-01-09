@@ -359,6 +359,8 @@ def green(msg: str):
 def add_uploaded_file(name: str, content: bytes):
     global data
     chunks = parse_docx(content)
+    for chunk in chunks:
+        chunk.text = chunk.text + f"({name})"  # add title into the chunk
 
     # Call OpenAI API to get vector embeddings
     chunks = openai_call_embedding(chunks)
