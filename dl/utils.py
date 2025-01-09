@@ -180,11 +180,6 @@ def read_as_bytes(file_path: str) -> bytes:
         raise Exception(f"An error occurred while reading the file: {e}")
 
 
-def parse_doc(path: str) -> list[Chunk]:
-    doc_content = read_as_bytes(path)
-    return parse_docx(doc_content)
-
-
 def openai_call_completion(username, question: str, chunks: list[Chunk]) -> str:
     global data
     if len(chunks) == 0:
@@ -347,8 +342,10 @@ def green(msg: str):
 def add_uploaded_file(name: str, content: bytes):
     global data
     chunks = parse_docx(content)
+
+    _name = name.removesuffix(".docx")
     for chunk in chunks:
-        chunk.text = chunk.text + f"({name})"  # add title into the chunk
+        chunk.text = chunk.text + f" ({_name})"  # add title into the chunk
 
     # Call OpenAI API to get vector embeddings
     chunks = openai_call_embedding(chunks)

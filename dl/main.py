@@ -1,4 +1,4 @@
-from dl.utils import data, parse_doc, openai_call_embedding, Doc, parse_docx, write_data, search_chunk, green, init, openai_call_completion, init_faiss
+from dl.utils import data, openai_call_embedding, Doc, parse_docx, write_data, search_chunk, green, init, openai_call_completion, init_faiss
 import dl.utils as utils
 from dl.http import app, delete_file
 import uvicorn
