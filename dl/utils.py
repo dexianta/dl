@@ -389,6 +389,6 @@ def delete_file(idx: int):
         init_faiss()
 
 
-def ask_question(question: str) -> str:
+def ask_question(username, question: str) -> str:
     chunks = search_chunk(question)
-    return openai_call_completion(question, chunks)
+    return openai_call_completion(username, question, chunks)
