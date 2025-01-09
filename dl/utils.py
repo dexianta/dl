@@ -120,7 +120,7 @@ chunk structure: text (from: document_name)
 data = Data(docs=[], state=State(
     users={}, prompt=default_prompt, chat_history=[]))
 client: OpenAI = None
-prompt = ''
+prompt = {}
 faiss_vec_idx = None
 faiss_meta_idx = []
 data_dir = ''
@@ -128,16 +128,6 @@ state_path = ''
 meta_path = ''
 embedding_path = ''
 top_n_chunk = 30
-
-
-def set_prompt(new_prompt: str):
-    global prompt
-    prompt = new_prompt
-
-
-def get_prompt() -> str:
-    global prompt
-    return prompt
 
 
 def init():
@@ -219,7 +209,8 @@ def openai_call_completion(username, question: str, chunks: list[ChunkRAG]) -> s
             "role": "assistant", "content": msg[4:]}
         for msg in data.state.chat_history.get(username, [])
     ]
-    msgs.insert(0, {"role": "system", "content": data.state.prompt})
+    msgs.insert(
+        0, {"role": "system", "content": data.state.prompt.get(username)})
     msgs = msgs + [{"role": "user",
                    "content": f"Context:\n{retrieved_context}\nQuestion:{question}"}]
     ret = client.chat.completions.create(
