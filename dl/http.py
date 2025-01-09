@@ -163,9 +163,9 @@ async def search_results(token: str = Query(...), query: str = Form(...)):
 
 @app.get("/ask-question", response_class=HTMLResponse)
 async def ask_question(token: str = Query(...)):
+    user = check(token)
     chat_html = "".join(f"<p>{msg}</p>" if msg.startswith('sys:') else f'<p style="color: gray;">{msg}</p>'
-                        for msg in utils.data.state.chat_history)
-    check(token)
+                        for msg in utils.data.state.chat_history.get(user, []))
     return html_template(token, f"""
     <h1> Ask a Question </h1>
     <div> {chat_html} </div>
