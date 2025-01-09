@@ -10,7 +10,7 @@ app = FastAPI()
 
 @app.get("/", response_class=HTMLResponse)
 async def login():
-    return html_template("", f"""
+    return html_template("", """
         <h1>Welcome to DocLib</h1>
         <form action="/auth" method="post">
         <label for="secret_key">Enter Your Token:</label><br>
@@ -23,7 +23,7 @@ async def login():
 @app.post("/auth", response_class=HTMLResponse)
 async def auth(token: str = Form(...)):
     check(token)
-    return RedirectResponse(r("/menu", token), 303)
+    return redirect("/menu", token)
 
 
 @app.get("/menu", response_class=HTMLResponse)
@@ -70,7 +70,7 @@ async def manage_files(token: str = Query(...)):
 async def delete_file(id: int = Form(...), token=Query(...)):
     check(token)
     utils.delete_file(id)
-    return RedirectResponse(r("/files", token), status_code=303)
+    return redirect("/files", token)
 
 
 @app.post("/add-file")
@@ -86,15 +86,15 @@ async def add_file(token=Query(...), file: UploadFile = File(...)):
 
     utils.add_uploaded_file(file_name, file_content)
 
-    return RedirectResponse(r("/files", token), status_code=303)
+    return redirect("/files", token)
 
 
 @app.get("/set-prompt", response_class=HTMLResponse)
 async def set_prompt(token: str = Query(...)):
     check(token)
     global data
-    return html_template(
-        f"""
+    return html_template(token,
+                         f"""
         <h1>Set Prompt</h1>
         <h3> Current Prompt: </h3>
         <p> {data.state.prompt} </p>
@@ -115,7 +115,7 @@ async def reset_chat(token: str = Query(...)):
     check(token)
     global data
     data.reset_chat(token)
-    return RedirectResponse("/ask-question", status_code=303)
+    return redirect("/ask-question", token)
 
 
 @app.post("/reset-prompt", response_class=HTMLResponse)
@@ -123,7 +123,7 @@ async def reset_prompt(token: str = Query(...)):
     check(token)
     global data
     data.reset_prompt(token)
-    return RedirectResponse(f"/set-prompt?token", status_code=303)
+    return redirect("/set-prompt", token)
 
 
 @app.post("/set-prompt-do", response_class=HTMLResponse)
@@ -131,7 +131,7 @@ async def set_prompt_do(prompt: str = Form(...), token: str = Query(...)):
     check(token)
     global data
     data.set_prompt(token, prompt)
-    return RedirectResponse(f"/set-prompt?token={token}", status_code=303)
+    return redirect("/set-prompt", token)
 
 
 @app.get("/chunk-search", response_class=HTMLResponse)
@@ -166,7 +166,7 @@ async def ask_question(token: str = Query(...)):
     chat_html = "".join(f"<p>{msg}</p>" if msg.startswith('sys:') else f'<p style="color: gray;">{msg}</p>'
                         for msg in utils.data.state.chat_history)
     check(token)
-    return html_template(f"""
+    return html_template(token, f"""
     <h1> Ask a Question </h1>
     <div> {chat_html} </div>
     <form id="uploadForm" action="{r("/submit-question", token)}" method="post">
@@ -187,7 +187,7 @@ async def submit_question(query:
     answer = utils.ask_question(query)
     utils.data.add_chat(token, "usr: " + query)
     utils.data.add_chat(token, "sys: " + answer)
-    return RedirectResponse(r("/ask-question", token), status_code=303)
+    return redirect("/ask-question", token)
 
 
 @app.on_event("shutdown")
@@ -217,6 +217,10 @@ def check(token):
     user = data.get_user(token)
     if user == "":
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+def redirect(path, token):
+    return RedirectResponse(r(path, token), status_code=303)
 
 
 def html_template(token, content):
