@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Form, File, UploadFile
+from fastapi import FastAPI, Form, File, UploadFile, Query, HTTPException
 from dl.utils import data, write_data
 import dl.utils as utils
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -9,14 +9,33 @@ app = FastAPI()
 
 
 @app.get("/", response_class=HTMLResponse)
-async def main_menu():
-    return html_template(f"""
+async def login():
+    return html_template("", f"""
+        <h1>Welcome to DocLib</h1>
+        <form action="/auth" method="post">
+        <label for="secret_key">Enter Your Token:</label><br>
+        <input type="text" id="token" name="token" required><br>
+        <button type="submit">Login</button>
+        </form>
+    """)
+
+
+@app.post("/auth", response_class=HTMLResponse)
+async def auth(token: str = Form(...)):
+    check(token)
+    return RedirectResponse(r("/menu", token), 303)
+
+
+@app.get("/menu", response_class=HTMLResponse)
+async def main_menu(token: str = Query(...)):
+    check(token)
+    return html_template(token, f"""
         <h1>DocLib</h1>
         <ul>
-            <li><a href="/files">Manage Files</a></li>
-            <li><a href="/set-prompt">Set Prompt</a></li>
-            <li><a href="/chunk-search">Search Chunk</a></li>
-            <li><a href="/ask-question">Ask Question</a></li>
+            <li><a href="/files?token={token}">Manage Files</a></li>
+            <li><a href="/set-prompt?token={token}">Set Prompt</a></li>
+            <li><a href="/chunk-search?token={token}">Search Chunk</a></li>
+            <li><a href="/ask-question?token={token}">Ask Question</a></li>
         </ul>
         <form action="/shutdown" method="post">
             <button type="submit">Close Server</button>
@@ -25,11 +44,12 @@ async def main_menu():
 
 
 @app.get("/files", response_class=HTMLResponse)
-async def manage_files():
+async def manage_files(token: str = Query(...)):
+    check(token)
     global data
     docs_html = "".join(
         f"""<li>
-        <form style="display: inline;" action="/delete-file" method="post">
+        <form style="display: inline;" action="/delete-file?token={token}" method="post">
             <input type="hidden" name="id" value="{doc.id}">
             <button type="submit">x</button>
         </form>
@@ -38,25 +58,27 @@ async def manage_files():
     </li>"""
         for doc in data.docs
     )
-    return html_template(f"""
-            <h1> Manage Files</h1>
-            <ul> {docs_html} </ul>
-             <form id="uploadForm" action="/add-file" method="post" enctype="multipart/form-data">
-                <label for="file">Add File (Select File):</label><br>
-                <input type="file" id="file" name="file" style=""><br>
-                <button id="submitButton" type="submit">Add</button>
-            </form>
-            """)
+    return html_template(token, f"""
+        <h1> Manage Files</h1>
+        <ul> {docs_html} </ul>
+         <form id="uploadForm" action="/add-file?token={token}" method="post" enctype="multipart/form-data">
+            <label for="file">Add File (Select File):</label><br>
+            <input type="file" id="file" name="file" style=""><br>
+            <button id="submitButton" type="submit">Add</button>
+        </form>
+        """)
 
 
 @app.post("/delete-file")
-async def delete_file(id: int = Form(...)):
+async def delete_file(id: int = Form(...), token=Query(...)):
+    check(token)
     utils.delete_file(id)
-    return RedirectResponse("/files", status_code=303)
+    return RedirectResponse(r("/files", token), status_code=303)
 
 
 @app.post("/add-file")
-async def add_file(file: UploadFile = File(...)):
+async def add_file(token=Query(...), file: UploadFile = File(...)):
+    check(token)
     # Get the file name
     file_name = file.filename
 
@@ -67,11 +89,12 @@ async def add_file(file: UploadFile = File(...)):
 
     utils.add_uploaded_file(file_name, file_content)
 
-    return RedirectResponse("/files", status_code=303)
+    return RedirectResponse(r("/files", token), status_code=303)
 
 
 @app.get("/set-prompt", response_class=HTMLResponse)
-async def set_prompt():
+async def set_prompt(token: str = Query(...)):
+    check(token)
     global data
     return html_template(
         f"""
@@ -91,30 +114,34 @@ async def set_prompt():
 
 
 @app.post("/reset-chat", response_class=HTMLResponse)
-async def reset_chat():
+async def reset_chat(token: str = Query(...)):
+    check(token)
     global data
-    data.state.chat_history = []
+    data.reset_chat(token)
     return RedirectResponse("/ask-question", status_code=303)
 
 
 @app.post("/reset-prompt", response_class=HTMLResponse)
-async def reset_prompt():
+async def reset_prompt(token: str = Query(...)):
+    check(token)
     global data
-    data.state.prompt = utils.default_prompt
-    return RedirectResponse("/set-prompt", status_code=303)
+    data.reset_prompt(token)
+    return RedirectResponse(f"/set-prompt?token", status_code=303)
 
 
 @app.post("/set-prompt-do", response_class=HTMLResponse)
-async def set_prompt_return(prompt: str = Form(...)):
+async def set_prompt_do(prompt: str = Form(...), token: str = Query(...)):
+    check(token)
     global data
-    data.state.prompt = prompt
-    return RedirectResponse("/set-prompt", status_code=303)
+    data.set_prompt(token, prompt)
+    return RedirectResponse(f"/set-prompt?token={token}", status_code=303)
 
 
 @app.get("/chunk-search", response_class=HTMLResponse)
-async def search_chunk():
-    return html_template(
-        """
+async def search_chunk(token: str = Query(...)):
+    check(token)
+    return html_template(token,
+                         """
         <h1>Search Chunk</h1>
         <form id="uploadForm" action="/search-results" method="post">
             <label for="query">Enter Search Query:</label>
@@ -122,46 +149,48 @@ async def search_chunk():
             <button id="submitButton" type="submit">Search</button>
         </form>
     """
-    )
+                         )
 
 
 @app.post("/search-results", response_class=HTMLResponse)
-async def search_results(query: str = Form(...)):
+async def search_results(token: str = Query(...), query: str = Form(...)):
+    check(token)
     ret = utils.search_chunk(query)
     results = [r.str() for r in ret]
     results_html = "".join(f"<li>{result}</li>" for result in results)
-    return html_template(f"""
+    return html_template(token, f"""
         <h1> Search Results </h1>
         <ul style="list-style-type:disc;margin-left: 20px"> {results_html} </ul>
     """)
 
 
 @app.get("/ask-question", response_class=HTMLResponse)
-async def ask_question():
-    chat_html = "".join(
-        f"<p>{
-            msg}</p>" if msg.startswith('sys:') else f'<p style="color: gray;">{msg}</p>'
-        for msg in utils.data.state.chat_history)
+async def ask_question(token: str = Query(...)):
+    chat_html = "".join(f"<p>{msg}</p>" if msg.startswith('sys:') else f'<p style="color: gray;">{msg}</p>'
+                        for msg in utils.data.state.chat_history)
+    check(token)
     return html_template(f"""
-        <h1> Ask a Question </h1>
-        <div> {chat_html} </div>
-        <form id="uploadForm" action="/submit-question" method="post">
-            <label for="query">Enter your question:</label>
-            <textarea id="query" name="query" rows="5" cols="40"></textarea>
-            <button id="submitButton" type="submit">Search</button>
-        </form>
-        <form action="/reset-chat" method="post">
-            <button type="submit">reset</button>
-        </form>
-    """)
+    <h1> Ask a Question </h1>
+    <div> {chat_html} </div>
+    <form id="uploadForm" action="{r("/submit-question", token)}" method="post">
+        <label for="query">Enter your question:</label>
+        <textarea id="query" name="query" rows="5" cols="40"></textarea>
+        <button id="submitButton" type="submit">Search</button>
+    </form>
+    <form action="{r("/reset-chat", token)}" method="post">
+        <button type="submit">reset</button>
+    </form>
+""")
 
 
 @app.post("/submit-question", response_class=HTMLResponse)
-async def submit_question(query: str = Form(...)):
+async def submit_question(query:
+                          str = Form(...), token: str = Query(...)):
+    check(token)
     answer = utils.ask_question(query)
-    utils.data.state.chat_history.append("usr: " + query)
-    utils.data.state.chat_history.append("sys: " + answer)
-    return RedirectResponse("/ask-question", status_code=303)
+    utils.data.add_chat(token, "usr: " + query)
+    utils.data.add_chat(token, "sys: " + answer)
+    return RedirectResponse(r("/ask-question", token), status_code=303)
 
 
 @app.on_event("shutdown")
@@ -175,7 +204,25 @@ async def shutdown():
     os.kill(os.getpid(), signal.SIGINT)  # Gracefully shut down
 
 
-def html_template(content):
+def authed(key:
+           str) -> str:
+    global data
+    return data.state.users[key]
+
+
+def r(path:
+      str, token: str) -> str:
+    return f"{path}?token={token}"
+
+
+def check(token):
+    global data
+    user = data.get_user(token)
+    if user == "":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+def html_template(token, content):
     return f"""
     <html>
         <head>
@@ -242,35 +289,35 @@ def html_template(content):
             {content}
             {script}
         </body>
-        <a href="/">Go Back</a>
+        <a href="/menu?token={token}">Go Back</a>
     </html>
     """
 
 
 script = """
-    <script>
-        const query = document.getElementById("query");
-        if (query) {
-            query.addEventListener('keydown', function(event) {
-                if (event.key === 'Enter') {
-                    event.preventDefault()
-                    const start = this.selectionStart
-                    const end = this.selectionEnd
-                    this.value = this.value.substring(0, start) + "\\n" + this.value.substring(end)
-                    this.selectionStart = this.selectionEnd = start + 1
-                }
-            });
-        }
+<script>
+    const query = document.getElementById("query");
+    if (query) {
+        query.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault()
+                const start = this.selectionStart
+                const end = this.selectionEnd
+                this.value = this.value.substring(0, start) + "\\n" + this.value.substring(end)
+                this.selectionStart = this.selectionEnd = start + 1
+            }
+        });
+    }
 
-        const form = document.getElementById('uploadForm');
-        const submitButton = document.getElementById('submitButton');
+    const form = document.getElementById('uploadForm');
+    const submitButton = document.getElementById('submitButton');
 
-        if (form && submitButton) {
-            form.addEventListener('submit', function(event) {
-                event.preventDefault();
-                submitButton.disabled = true;
-                form.submit()
-            });
-        }
-    </script>
+    if (form && submitButton) {
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            submitButton.disabled = true;
+            form.submit()
+        });
+    }
+</script>
 """

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, asdict
+from signal import default_int_handler
 from typing import Tuple, Optional
 import faiss
 import numpy as np
@@ -43,14 +44,39 @@ class Doc:
 
 @dataclass
 class State:
-    prompt: str
-    chat_history: list
+    users: dict[str, str]  # key -> username
+    prompt: dict[str, str]  # username -> prompt
+    chat_history: dict[str, list]  # username -> chat history
 
 
 @dataclass
 class Data:
     state: State
     docs: list[Doc]
+
+    def get_user(self, key: str):
+        return self.state.users.get(key, "")
+
+    def add_chat(self, key, msg: str):
+        user = self.get_user(key)
+        if user == "":
+            return
+        self.state.chat_history.setdefault(user, []).append(msg)
+
+    def reset_chat(self, key: str):
+        user = self.get_user(key)
+        if user == "":
+            return
+        self.state.chat_history[user] = []
+
+    def set_prompt(self, key, prompt: str):
+        user = self.get_user(key)
+        if user == "":
+            return
+        self.state.prompt[user] = prompt
+
+    def reset_prompt(self, key):
+        self.set_prompt(key, default_prompt)
 
     def get(self, id: int) -> Optional[Doc]:
         for d in self.docs:
@@ -91,7 +117,8 @@ chunk structure: text (from: document_name)
 """
 
 
-data = Data(docs=[], state=State(prompt=default_prompt, chat_history=[]))
+data = Data(docs=[], state=State(
+    users={}, prompt=default_prompt, chat_history=[]))
 client: OpenAI = None
 prompt = ''
 faiss_vec_idx = None
@@ -143,6 +170,8 @@ def init_faiss():
     global data
     global faiss_vec_idx
     global faiss_meta_idx
+    if len(data.docs) == 0:
+        return
     faiss_vec_idx, faiss_meta_idx = build_faiss(data.docs)
 
 
@@ -241,7 +270,7 @@ def read_data() -> Tuple[list[Doc], State]:
     gray('reading data from disk...')
     global meta_path, embedding_path, state_path
     metas = []
-    state = State(prompt="", chat_history=[])
+    state = State(prompt={}, chat_history={}, users={})
     try:
         if os.path.exists(meta_path):
             with open(meta_path, 'r') as f:
@@ -252,9 +281,9 @@ def read_data() -> Tuple[list[Doc], State]:
                 state = State(**tmp)
         embeddings = np.load(embedding_path)
 
-        if state.prompt == "":
-            print('setting default prompt')
-            state.prompt = default_prompt
+        for k, v in state.users.items():
+            if state.prompt.get(k, "") == "":
+                state.prompt[k] = default_prompt
 
         docs_list = []
         for meta in metas:
