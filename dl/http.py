@@ -147,7 +147,7 @@ async def search_chunk(token: str = Query(...)):
         <form id="uploadForm" action="/search-results?token={token}" method="post">
             <label for="query">Enter Search Query:</label>
             <textarea id="query" name="query" rows="5" cols="40"></textarea>
-            <button id="submitButton" type="submit">Search</button>
+            <button id="submitButton" type="submit">Submit</button>
         </form>
     """
                          )
@@ -177,7 +177,7 @@ async def ask_question(token: str = Query(...)):
     <form id="uploadForm" action="{r("/submit-question", token)}" method="post">
         <label for="query">Enter your question:</label>
         <textarea id="query" name="query" rows="5" cols="40"></textarea>
-        <button id="submitButton" type="submit">Search</button>
+        <button id="submitButton" type="submit">Submit</button>
     </form>
     <form action="{r("/reset-chat", token)}" method="post">
         <button type="submit">reset</button>
