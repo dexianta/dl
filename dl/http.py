@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Form, File, UploadFile, Query, HTTPException
-from dl.utils import data, write_data
+from .utils import data, write_data
 import dl.utils as utils
 from fastapi.responses import HTMLResponse, RedirectResponse
 import os
@@ -60,7 +60,7 @@ async def manage_files(token: str = Query(...)):
         <ul> {docs_html} </ul>
          <form id="uploadForm" action="/add-file?token={token}" method="post" enctype="multipart/form-data">
             <label for="file">Add File (Select File):</label><br>
-            <input type="file" id="file" name="file" style=""><br>
+            <input type="file" id="file" name="files" multiple><br>
             <button id="submitButton" type="submit">Add</button>
         </form>
         """)
@@ -74,20 +74,22 @@ async def delete_file(id: int = Form(...), token=Query(...)):
 
 
 @app.post("/add-file")
-async def add_file(token=Query(...), file: UploadFile = File(...)):
+async def add_file(token=Query(...), files: list[UploadFile] = File(...)):
     check(token)
     # Get the file name
-    file_name = file.filename
+    for file in files:
+        file_name = file.filename
 
-    # Read the file content as bytes
-    file_content = await file.read()
+        # Read the file content as bytes
+        file_content = await file.read()
 
-    print('adding file..', 'name: ', file_name, 'bytes: ', len(file_content))
+        print('adding file..', 'name: ', file_name,
+              'bytes: ', len(file_content))
 
-    if file_name is None or file_content is None:
-        return redirect("/files", token)
+        if file_name is None or file_content is None:
+            return redirect("/files", token)
 
-    utils.add_uploaded_file(file_name, file_content)
+        utils.add_uploaded_file(file_name, file_content)
     return redirect("/files", token)
 
 
@@ -155,8 +157,9 @@ async def search_chunk(token: str = Query(...)):
 async def search_results(token: str = Query(...), query: str = Form(...)):
     check(token)
     ret = utils.search_chunk(query)
-    results = [r.text for r in ret]
-    results_html = "".join(f"<li>{result}</li>" for result in results)
+    results = [f"{r.text} ({r.title})" for r in ret]
+    results_html = "".join(
+        f"<li>{result}</li>" for result in results)
     return html_template(token, f"""
         <h1> Search Results </h1>
         <ul style="list-style-type:disc;margin-left: 20px"> {results_html} </ul>

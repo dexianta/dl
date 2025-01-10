@@ -1,16 +1,18 @@
 from dataclasses import dataclass, asdict
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from docx import Document
+from io import BytesIO
 from typing import Tuple
 import faiss
 import numpy as np
 import os
 from openai import OpenAI
-from unstructured.partition.docx import partition_docx  # this import is heavy
 import json
-import io
 
 
 @dataclass
 class Chunk:
+    title: str  # optional
     text: str
     vec: list[float]
 
@@ -144,7 +146,6 @@ def init():
 
 def init_faiss():
     gray('init faiss')
-    global data
     global faiss_vec_idx
     global faiss_meta_idx
     if len(data.docs) == 0:
@@ -152,21 +153,29 @@ def init_faiss():
     faiss_vec_idx, faiss_meta_idx = build_faiss(data.docs)
 
 
+text_splitter = RecursiveCharacterTextSplitter(
+    # Set a really small chunk size, just to show.
+    chunk_size=400,
+    chunk_overlap=50,
+    length_function=len,
+    is_separator_regex=False,
+)
+
+
 def parse_docx(file: bytes) -> list[Chunk]:
     # Partition the PDF into structured elements
-    elements = partition_docx(
-        file=io.BytesIO(file),
-        infer_table_structure=True,
-        include_page_breaks=True,
-        starting_page_number=1,
-        strategy='hi_res'
-    )
+    doc_str = BytesIO(file)
 
-    new_elements = []
-    for elem in elements:
-        d = elem.to_dict()
-        new_elements.append(Chunk(text=d['text'], vec=[]))
-    return new_elements
+    text = [p.text for p in Document(doc_str).paragraphs if p.text != '']
+
+    chunks = [
+        chunk.page_content for chunk in text_splitter.create_documents(text)
+    ]
+
+    ret = []
+    for chunk in chunks:
+        ret.append(Chunk(text=chunk, vec=[], title=''))
+    return ret
 
 
 def read_as_bytes(file_path: str) -> bytes:
@@ -184,7 +193,7 @@ def openai_call_completion(username, question: str, chunks: list[Chunk]) -> str:
     if len(chunks) == 0:
         return "no data"
     retrieved_context = "\n".join(
-        [f'{chunk.text}' for chunk in chunks])
+        [f'{chunk.text} ({chunk.title})' for chunk in chunks])
     gray('calling completion api')
     msgs = [
         {"role": "user", "content": msg[4:]} if msg.startswith('usr:') else {
@@ -317,14 +326,16 @@ def search_chunk(question: str) -> list[Chunk]:
     global data
     global faiss_meta_idx
     global faiss_vec_idx
-    ret = openai_call_embedding(chunks=[Chunk(text=question, vec=[])])
+    ret = openai_call_embedding(
+        chunks=[Chunk(text=question, vec=[], title='')])
     question_vec = ret[0].vec
     gray(f"question embedding generated: {len(question_vec)}")
     idxes = search_vec(faiss_vec_idx, faiss_meta_idx, question_vec)
     retrived = []
     for (doc_idx, chunk_idx, _) in idxes:
-        # doc = data.get(doc_idx)
+        doc = data.get(doc_idx)
         chunk = data.get(doc_idx).chunks[chunk_idx]
+        chunk.title = doc.title
         retrived.append(chunk)
     gray(f'{len(retrived)} chunks retrived')
     return retrived
@@ -343,12 +354,11 @@ def green(msg: str):
 
 
 def add_uploaded_file(name: str, content: bytes):
-    global data
     chunks = parse_docx(content)
 
-    _name = name.removesuffix(".docx")
+    # _name = name.removesuffix(".docx")
     for chunk in chunks:
-        chunk.text = chunk.text + f" ({_name})"  # add title into the chunk
+        chunk.text = chunk.text  # add title into the chunk
 
     # Call OpenAI API to get vector embeddings
     chunks = openai_call_embedding(chunks)
@@ -360,7 +370,6 @@ def add_uploaded_file(name: str, content: bytes):
 
 
 def delete_file(idx: int):
-    global data
     change = False
     for i, doc in enumerate(data.docs):
         if doc.id == idx:
