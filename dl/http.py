@@ -84,7 +84,7 @@ async def add_file(token=Query(...), file: UploadFile = File(...)):
 
     print('adding file..', 'name: ', file_name, 'bytes: ', len(file_content))
 
-    if len(file_name) == 0 or len(file_content) == 0:
+    if file_name is None or file_content is None:
         return redirect("/files", token)
 
     utils.add_uploaded_file(file_name, file_content)
