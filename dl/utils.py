@@ -1,6 +1,5 @@
 from dataclasses import dataclass, asdict
-from signal import default_int_handler
-from typing import Tuple, Optional
+from typing import Tuple
 import faiss
 import numpy as np
 import os
@@ -66,11 +65,11 @@ class Data:
     def reset_prompt(self, key):
         self.set_prompt(key, default_prompt)
 
-    def get(self, id: int) -> Optional[Doc]:
+    def get(self, doc_id: int) -> Doc:
         for d in self.docs:
-            if d.id == id:
+            if d.id == doc_id:
                 return d
-        return None
+        return Doc(0, "", [])
 
     def next_id(self) -> int:
         if len(self.docs) == 0:
@@ -106,7 +105,7 @@ chunk structure: text (from: document_name)
 
 
 data = Data(docs=[], state=State(
-    users={}, prompt=default_prompt, chat_history=[]))
+    users={}, prompt={}, chat_history={}))
 client: OpenAI = None
 prompt = {}
 faiss_vec_idx = None
@@ -193,9 +192,13 @@ def openai_call_completion(username, question: str, chunks: list[Chunk]) -> str:
         for msg in data.state.chat_history.get(username, [])
     ]
     msgs.insert(
-        0, {"role": "system", "content": data.state.prompt.get(username) + " (never format response, just plain text)"})
+        0, {
+            "role": "system",
+            "content": data.state.prompt.get(username, default_prompt) +
+            " (never format response, just plain text)"})
     msgs = msgs + [{"role": "user",
-                   "content": f"Context:\n{retrieved_context}\nQuestion:{question}"}]
+                   "content": f"Context:\n{retrieved_context}\nQuestion:{question}",
+                    }]
     ret = client.chat.completions.create(
         model="gpt-4o-2024-08-06",
         messages=msgs)
@@ -295,7 +298,7 @@ def build_faiss(docs: list[Doc]) -> Tuple[faiss.IndexFlatL2, list[Tuple[int, int
     return idx, meta
 
 
-def search_vec(idx: faiss.IndexFlatL2, meta: list[Tuple[int, int]], query: list[float], n=50) -> Tuple[int, int, int]:
+def search_vec(idx: faiss.IndexFlatL2, meta: list[Tuple[int, int]], query: list[float], n=50) -> list[Tuple[int, int, int]]:
     gray('search_vec')
     if idx is None:
         raise Exception('faiss index not initialize')
