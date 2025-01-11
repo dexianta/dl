@@ -279,7 +279,7 @@ def read_data() -> Tuple[list[Doc], State]:
             chunks = []
             for chunk in meta['chunks']:
                 vec = embeddings[chunk['vec_idx']].tolist()
-                chunks.append(Chunk(text=chunk['text'], vec=vec))
+                chunks.append(Chunk(text=chunk['text'], vec=vec, title=''))
             docs_list.append(Doc(
                 id=meta["id"],
                 title=meta["title"],
@@ -292,7 +292,9 @@ def read_data() -> Tuple[list[Doc], State]:
 
 
 # meta is (doc_idx, chunk_idx)
-def build_faiss(docs: list[Doc]) -> Tuple[faiss.IndexFlatL2, list[Tuple[int, int]]]:
+def build_faiss(
+    docs: list[Doc]
+) -> Tuple[faiss.IndexFlatL2, list[Tuple[int, int]]]:
     embeddings = []
     meta = []
     for doc in docs:
@@ -307,7 +309,11 @@ def build_faiss(docs: list[Doc]) -> Tuple[faiss.IndexFlatL2, list[Tuple[int, int
     return idx, meta
 
 
-def search_vec(idx: faiss.IndexFlatL2, meta: list[Tuple[int, int]], query: list[float], n=50) -> list[Tuple[int, int, int]]:
+def search_vec(
+        idx: faiss.IndexFlatL2,
+        meta: list[Tuple[int, int]],
+        query: list[float],
+        n=50) -> list[Tuple[int, int, int]]:
     gray('search_vec')
     if idx is None:
         raise Exception('faiss index not initialize')
@@ -322,7 +328,7 @@ def search_vec(idx: faiss.IndexFlatL2, meta: list[Tuple[int, int]], query: list[
     return ret
 
 
-def search_chunk(question: str) -> list[Chunk]:
+def search_chunk(question: str, chunk_size: int) -> list[Chunk]:
     global data
     global faiss_meta_idx
     global faiss_vec_idx
@@ -330,7 +336,7 @@ def search_chunk(question: str) -> list[Chunk]:
         chunks=[Chunk(text=question, vec=[], title='')])
     question_vec = ret[0].vec
     gray(f"question embedding generated: {len(question_vec)}")
-    idxes = search_vec(faiss_vec_idx, faiss_meta_idx, question_vec)
+    idxes = search_vec(faiss_vec_idx, faiss_meta_idx, question_vec, chunk_size)
     retrived = []
     for (doc_idx, chunk_idx, _) in idxes:
         doc = data.get(doc_idx)
@@ -379,6 +385,6 @@ def delete_file(idx: int):
         init_faiss()
 
 
-def ask_question(username, question: str) -> str:
-    chunks = search_chunk(question)
+def ask_question(username, question: str, chunk_size=50) -> str:
+    chunks = search_chunk(question, chunk_size)
     return openai_call_completion(username, question, chunks)

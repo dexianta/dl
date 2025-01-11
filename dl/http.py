@@ -147,6 +147,8 @@ async def search_chunk(token: str = Query(...)):
         <form id="uploadForm" action="/search-results?token={token}" method="post">
             <label for="query">Enter Search Query:</label>
             <textarea id="query" name="query" rows="5" cols="40"></textarea>
+            <label for="number">Chunk size:</label>
+            <input id="number" name="chunk_size" type="number" value="10" required />
             <button id="submitButton" type="submit">Submit</button>
         </form>
     """
@@ -154,9 +156,9 @@ async def search_chunk(token: str = Query(...)):
 
 
 @app.post("/search-results", response_class=HTMLResponse)
-async def search_results(token: str = Query(...), query: str = Form(...)):
+async def search_results(token: str = Query(...), query: str = Form(...), chunk_size: int = Form(...)):
     check(token)
-    ret = utils.search_chunk(query)
+    ret = utils.search_chunk(query, chunk_size)
     results = [f"{r.text} ({r.title})" for r in ret]
     results_html = "".join(
         f"<li>{result}</li>" for result in results)
@@ -177,6 +179,8 @@ async def ask_question(token: str = Query(...)):
     <form id="uploadForm" action="{r("/submit-question", token)}" method="post">
         <label for="query">Enter your question:</label>
         <textarea id="query" name="query" rows="5" cols="40"></textarea>
+        <label for="number">Chunk size:</label>
+        <input id="number" name="chunk_size" type="number" value="10" required />
         <button id="submitButton" type="submit">Submit</button>
     </form>
     <form action="{r("/reset-chat", token)}" method="post">
@@ -186,9 +190,12 @@ async def ask_question(token: str = Query(...)):
 
 
 @app.post("/submit-question", response_class=HTMLResponse)
-async def submit_question(query:
-                          str = Form(...), token: str = Query(...)):
-    answer = utils.ask_question(check(token), query)
+async def submit_question(
+    query: str = Form(...),
+    token: str = Query(...),
+    chunk_size: int = Form(...)
+):
+    answer = utils.ask_question(check(token), query, chunk_size)
     utils.data.add_chat(token, "usr: " + query)
     utils.data.add_chat(token, "sys: " + answer)
     return redirect("/ask-question", token)
