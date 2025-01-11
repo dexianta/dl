@@ -111,6 +111,7 @@ data = Data(docs=[], state=State(
 client: OpenAI = None
 prompt = {}
 faiss_vec_idx = None
+faiss_vec_by_doc_id = None
 faiss_meta_idx = []
 data_dir = ''
 state_path = ''
@@ -146,11 +147,13 @@ def init():
 
 def init_faiss():
     gray('init faiss')
-    global faiss_vec_idx
-    global faiss_meta_idx
+    # global faiss_vec_idx
+    # global faiss_meta_idx
+    global faiss_vec_by_doc_id
     if len(data.docs) == 0:
         return
-    faiss_vec_idx, faiss_meta_idx = build_faiss(data.docs)
+    # faiss_vec_idx, faiss_meta_idx = build_faiss(data.docs)
+    faiss_vec_by_doc_id = build_faiss2(data.docs)
 
 
 text_splitter = RecursiveCharacterTextSplitter(
@@ -290,6 +293,59 @@ def read_data() -> Tuple[list[Doc], State]:
         print(f'error loading data from disk...: {e}')
         return [], state
 
+# meta is (doc_idx, chunk_idx)
+
+
+def search_vec2(
+        idx: dict[int, faiss.IndexFlatL2],
+        query: list[float],
+        n=50) -> dict[str, list[int]]:
+    gray('search_vec2')
+    if idx is None:
+        raise Exception('faiss index not initialize')
+    query = np.array(query, dtype=np.float32).reshape(1, -1)
+
+    tmp = {}
+    for doc_id, index in idx.items():
+        dist, indices = index.search(query, n)
+        tmp[doc_id] = list(zip(indices[0], dist[0]))
+
+    tmp_list = []
+    # find the combined top n
+    for doc_id, t in tmp.items():
+        for idx, dist in t:
+            tmp_list.append((doc_id, idx, dist))
+
+    sorted_data = sorted(tmp_list, key=lambda x: x[2])
+
+    ret = {}
+    for doc_id, i, dist in sorted_data[:n]:
+        if doc_id not in ret:
+            ret[doc_id] = []
+        ret[doc_id].append(i)
+
+    return ret
+
+
+def build_faiss2(
+    docs: list[Doc]
+) -> dict[int, faiss.IndexFlatL2]:
+    indexes = {}
+    for doc in docs:
+        embeddings = []
+        for chunk_idx, chunk in enumerate(doc.chunks):
+            embeddings.append(chunk.vec)
+            # meta.append((doc.id, chunk_idx))
+        # embeddings for one docs
+        embeddings_np = np.array(embeddings, dtype=np.float32)
+        dimension = embeddings_np.shape[1]
+        idx = faiss.IndexFlatL2(dimension)
+        idx.add(embeddings_np)
+        indexes[doc.id] = idx
+
+    gray('faiss index built')
+    return indexes
+
 
 # meta is (doc_idx, chunk_idx)
 def build_faiss(
@@ -326,6 +382,24 @@ def search_vec(
             doc_idx, chunk_idx = meta[idx]
             ret.append((doc_idx, chunk_idx, dist))
     return ret
+
+
+def search_chunk2(question: str, doc_ids: list[int], chunk_size: int) -> list[Chunk]:
+    global data
+    ret = openai_call_embedding(
+        chunks=[Chunk(text=question, vec=[], title='')])
+    question_vec = ret[0].vec
+    gray(f"question embedding generated: {len(question_vec)}")
+    idxes = search_vec2(filter_vec(doc_ids), question_vec, chunk_size)
+    retrived = []
+    for doc_id, idx in idxes.items():
+        doc = data.get(doc_id)
+        for chunk_idx in idx:
+            chunk = data.get(doc_id).chunks[chunk_idx]
+            chunk.title = doc.title
+            retrived.append(chunk)
+    gray(f'{len(retrived)} chunks retrived')
+    return retrived
 
 
 def search_chunk(question: str, chunk_size: int) -> list[Chunk]:
@@ -385,6 +459,20 @@ def delete_file(idx: int):
         init_faiss()
 
 
-def ask_question(username, question: str, chunk_size=50) -> str:
-    chunks = search_chunk(question, chunk_size)
+def ask_question(username, question: str, doc_ids: list[int], chunk_size=50) -> str:
+    chunks = search_chunk2(question, doc_ids, chunk_size)
     return openai_call_completion(username, question, chunks)
+
+
+def filter_vec(doc_ids: list[int]) -> dict[int, faiss.IndexFlatL2]:
+    gray(f'filter by docs {doc_ids}')
+    if doc_ids is None or len(doc_ids) == 0:
+        return faiss_vec_by_doc_id
+
+    ret = {}
+    for k, v in faiss_vec_by_doc_id.items():
+        if k in doc_ids:
+            ret[k] = v
+
+    gray(f'filtered: {ret.keys()}')
+    return ret

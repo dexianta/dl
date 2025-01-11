@@ -14,7 +14,7 @@ async def login():
         <h1>Welcome to DocLib</h1>
         <form action="/auth" method="post">
         <label for="secret_key">Enter Your Token:</label><br>
-        <input type="text" id="token" name="token" required><br>
+        <input type="text" id="token" name="token" size="20" required><br>
         <button type="submit">Login</button>
         </form>
     """)
@@ -38,6 +38,17 @@ async def main_menu(token: str = Query(...)):
             <li><a href="/ask-question?token={token}">Ask Question</a></li>
         </ul>
     """)
+
+
+def file_list():
+    li = "".join(
+        f"""<li>
+        <span style="font-weight: bold;">{doc.id}</span>.
+        <span style="font-weight: bold;">{doc.title}</span>
+    </li>"""
+        for doc in data.docs
+    )
+    return f"<ul>{li}</ul>"
 
 
 @app.get("/files", response_class=HTMLResponse)
@@ -147,18 +158,33 @@ async def search_chunk(token: str = Query(...)):
         <form id="uploadForm" action="/search-results?token={token}" method="post">
             <label for="query">Enter Search Query:</label>
             <textarea id="query" name="query" rows="5" cols="40"></textarea>
-            <label for="number">Chunk size:</label>
-            <input id="number" name="chunk_size" type="number" value="10" required />
+
+            <div class="form-row">
+                <label for="number">Chunk size:</label>
+                <input id="number" name="chunk_size" type="number" value="10" required />
+
+                <label for="doc_ids">Doc IDs:</label>
+                <input id="doc_ids" name="doc_ids" type="text" placeholder="e.g. 1,2,3"/>
+            </div>
+
             <button id="submitButton" type="submit">Submit</button>
         </form>
+        <p> --- Available files --- </p>
+        {file_list()}
     """
-                         )
+    )
 
 
 @app.post("/search-results", response_class=HTMLResponse)
-async def search_results(token: str = Query(...), query: str = Form(...), chunk_size: int = Form(...)):
+async def search_results(
+        doc_ids: str = Form(...),
+        token: str = Query(...),
+        query: str = Form(...),
+        chunk_size: int = Form(...)):
     check(token)
-    ret = utils.search_chunk(query, chunk_size)
+    doc_ids_num = parse_comma_separated_ints(doc_ids)
+
+    ret = utils.search_chunk2(query, doc_ids_num, chunk_size)
     results = [f"{r.text} ({r.title})" for r in ret]
     results_html = "".join(
         f"<li>{result}</li>" for result in results)
@@ -179,23 +205,32 @@ async def ask_question(token: str = Query(...)):
     <form id="uploadForm" action="{r("/submit-question", token)}" method="post">
         <label for="query">Enter your question:</label>
         <textarea id="query" name="query" rows="5" cols="40"></textarea>
-        <label for="number">Chunk size:</label>
-        <input id="number" name="chunk_size" type="number" value="10" required />
+
+        <div class="form-row">
+            <label for="number">Chunk size:</label>
+            <input id="number" name="chunk_size" type="number" value="10" required />
+
+            <label for="doc_ids">Doc IDs:</label>
+            <input id="doc_ids" name="doc_ids" type="text" placeholder="e.g. 1,2,3"/>
+        </div>
         <button id="submitButton" type="submit">Submit</button>
     </form>
     <form action="{r("/reset-chat", token)}" method="post">
         <button type="submit">reset</button>
     </form>
+    <p> --- Available files --- </p>
+    {file_list()}
 """)
 
 
 @app.post("/submit-question", response_class=HTMLResponse)
 async def submit_question(
-    query: str = Form(...),
-    token: str = Query(...),
-    chunk_size: int = Form(...)
-):
-    answer = utils.ask_question(check(token), query, chunk_size)
+        query: str = Form(...),
+        token: str = Query(...),
+        chunk_size: int = Form(...),
+        doc_ids: str = Form(...)):
+    doc_ids_num = parse_comma_separated_ints(doc_ids)
+    answer = utils.ask_question(check(token), query, doc_ids_num, chunk_size)
     utils.data.add_chat(token, "usr: " + query)
     utils.data.add_chat(token, "sys: " + answer)
     return redirect("/ask-question", token)
@@ -236,7 +271,8 @@ def redirect(path, token):
 
 
 def html_template(token, content):
-    return f"""
+    top_menu = f"""<a href="/menu?token={token}">Top Menu</a>"""
+    ret = f"""
     <html>
         <head>
             <title>DocLib</title>
@@ -261,6 +297,23 @@ def html_template(token, content):
                 a:hover {{
                     text-decoration: underline;
                 }}
+
+                .form-row {{
+                    display: flex; /* Arrange items in a row */
+                    align-items: center; /* Align vertically */
+                    gap: 10px; /* Space between items */
+                    margin-bottom: 15px; /* Spacing between rows */
+                }}
+
+                .form-row input[type="number"],
+                .form-row input[type="text"] {{
+                    width: 150px; /* Set a fixed width for inputs */
+                }}
+
+                .form-row label {{
+                    white-space: nowrap; /* Prevent label text wrapping */
+                }}
+
                 ul {{
                     list-style: none;
                     padding: 0;
@@ -288,7 +341,14 @@ def html_template(token, content):
                 form {{
                     margin-top: 20px;
                 }}
-                input, textarea {{
+                input {{
+                    font-family: 'Roboto', sans-serif;
+                    padding: 10px;
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                    margin-bottom: 10px;
+                }}
+                textarea {{
                     font-family: 'Roboto', sans-serif;
                     padding: 10px;
                     border: 1px solid #ccc;
@@ -302,9 +362,14 @@ def html_template(token, content):
             {content}
             {script}
         </body>
-        <a href="/menu?token={token}">Go Back</a>
+        #top-menu#
     </html>
     """
+    if token != "":
+        ret = ret.replace("#top-menu#", top_menu)
+    else:
+        ret = ret.replace("#top-menu#", "")
+    return ret
 
 
 script = """
@@ -334,3 +399,10 @@ script = """
     }
 </script>
 """
+
+
+def parse_comma_separated_ints(input_string: str) -> list[int]:
+    try:
+        return [int(num.strip()) for num in input_string.split(",") if num.strip()]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Bad doc id")
