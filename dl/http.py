@@ -161,7 +161,7 @@ async def search_chunk(token: str = Query(...)):
 
             <div class="form-row">
                 <label for="number">Chunk size:</label>
-                <input id="number" name="chunk_size" type="number" value="10" required />
+                <input id="number" name="chunk_size" type="number" value="30" required />
 
                 <label for="doc_ids">Doc IDs:</label>
                 <input id="doc_ids" name="doc_ids" type="text" placeholder="e.g. 1,2,3"/>
@@ -208,7 +208,7 @@ async def ask_question(token: str = Query(...)):
 
         <div class="form-row">
             <label for="number">Chunk size:</label>
-            <input id="number" name="chunk_size" type="number" value="10" required />
+            <input id="number" name="chunk_size" type="number" value="30" required />
 
             <label for="doc_ids">Doc IDs:</label>
             <input id="doc_ids" name="doc_ids" type="text" placeholder="e.g. 1,2,3"/>
