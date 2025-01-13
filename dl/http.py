@@ -70,7 +70,7 @@ async def manage_files(token: str = Query(...)):
         <form style="display: inline;" action="/add-tag?token={token}" method="post">
             <input type="hidden" name="id" value="{doc.id}">
             <input type="text" name="tag" placeholder="add tag" size="10" required>
-        <button type="submit">Add Tag</button>
+        <button type="submit">Tag</button>
     </form>
     </li>"""
         for doc in data.docs
@@ -259,7 +259,7 @@ async def submit_question(
     doc_ids_num = parse_comma_separated_ints(doc_ids)
     doc_tags = [x.strip() for x in doc_tags.split(",") if x.strip()]
     answer = utils.ask_question(
-        check(token), query, doc_ids_num, doc_tags,chunk_size)
+        check(token), query, doc_ids_num, doc_tags, chunk_size)
     utils.data.add_chat(token, "usr: " + query)
     utils.data.add_chat(token, "sys: " + answer)
     return redirect("/ask-question", token)
