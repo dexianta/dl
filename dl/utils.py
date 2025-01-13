@@ -291,7 +291,8 @@ def read_data() -> Tuple[list[Doc], State]:
             chunks = []
             for chunk in meta['chunks']:
                 vec = embeddings[chunk['vec_idx']].tolist()
-                chunks.append(Chunk(text=chunk['text'], vec=vec, title=''))
+                chunks.append(
+                    Chunk(text=chunk['text'], vec=vec, title='', tag=''))
             docs_list.append(Doc(
                 id=meta["id"],
                 title=meta["title"],

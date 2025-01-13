@@ -235,6 +235,9 @@ async def ask_question(token: str = Query(...)):
 
             <label for="doc_ids">Doc IDs:</label>
             <input id="doc_ids" name="doc_ids" type="text" placeholder="e.g. 1,2,3"/>
+
+            <label for="doc_ids">Doc Tags:</label>
+            <input id="doc_tags" name="doc_tags" type="text" placeholder="e.g. tag1,tag2"/>
         </div>
         <button id="submitButton" type="submit">Submit</button>
     </form>
@@ -254,8 +257,9 @@ async def submit_question(
         doc_ids: str = Form(...),
         doc_tags: str = Form(...)):
     doc_ids_num = parse_comma_separated_ints(doc_ids)
+    doc_tags = [x.strip() for x in doc_tags.split(",") if x.strip()]
     answer = utils.ask_question(
-        check(token), query, doc_tags, doc_ids_num, chunk_size)
+        check(token), query, doc_ids_num, doc_tags,chunk_size)
     utils.data.add_chat(token, "usr: " + query)
     utils.data.add_chat(token, "sys: " + answer)
     return redirect("/ask-question", token)
