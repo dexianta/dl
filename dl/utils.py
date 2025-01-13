@@ -12,6 +12,7 @@ import json
 
 @dataclass
 class Chunk:
+    tag: str
     title: str  # optional
     text: str
     vec: list[float]
@@ -21,12 +22,14 @@ class Chunk:
 class Doc:
     id: int
     title: str
+    tag: str
     chunks: list[Chunk]
 
     def to_meta(self) -> dict:
         return {
             "id": self.id,
             "title": self.title,
+            "tag": self.tag,
             'chunks': [],
         }
 
@@ -71,7 +74,7 @@ class Data:
         for d in self.docs:
             if d.id == doc_id:
                 return d
-        return Doc(0, "", [])
+        return Doc(0, "", "", [])
 
     def next_id(self) -> int:
         if len(self.docs) == 0:
@@ -84,6 +87,12 @@ class Data:
             if doc.title == name:
                 return True
         return False
+
+    def add_doc_tag(self, id: int, tag: str):
+        for i, doc in enumerate(self.docs):
+            if doc.id == id:
+                self.docs[i].tag = tag
+                return
 
     def add_doc(self, doc: Doc) -> int:
         doc.id = self.next_id()
@@ -177,7 +186,7 @@ def parse_docx(file: bytes) -> list[Chunk]:
 
     ret = []
     for chunk in chunks:
-        ret.append(Chunk(text=chunk, vec=[], title=''))
+        ret.append(Chunk(text=chunk, vec=[], title='', tag=''))
     return ret
 
 
@@ -286,7 +295,8 @@ def read_data() -> Tuple[list[Doc], State]:
             docs_list.append(Doc(
                 id=meta["id"],
                 title=meta["title"],
-                chunks=chunks
+                chunks=chunks,
+                tag=meta.get('tag', ''),
             ))
         return docs_list, state
     except Exception as e:
@@ -384,19 +394,21 @@ def search_vec(
     return ret
 
 
-def search_chunk2(question: str, doc_ids: list[int], chunk_size: int) -> list[Chunk]:
+def search_chunk2(question: str, doc_tags: list[str], doc_ids: list[int], chunk_size: int) -> list[Chunk]:
     global data
     ret = openai_call_embedding(
-        chunks=[Chunk(text=question, vec=[], title='')])
+        chunks=[Chunk(text=question, vec=[], title='', tag='')])
     question_vec = ret[0].vec
     gray(f"question embedding generated: {len(question_vec)}")
-    idxes = search_vec2(filter_vec(doc_ids), question_vec, chunk_size)
+    idxes = search_vec2(filter_vec(doc_ids, doc_tags),
+                        question_vec, chunk_size)
     retrived = []
     for doc_id, idx in idxes.items():
         doc = data.get(doc_id)
         for chunk_idx in idx:
             chunk = data.get(doc_id).chunks[chunk_idx]
             chunk.title = doc.title
+            chunk.tag = doc.tag
             retrived.append(chunk)
     gray(f'{len(retrived)} chunks retrived')
     return retrived
@@ -407,7 +419,7 @@ def search_chunk(question: str, chunk_size: int) -> list[Chunk]:
     global faiss_meta_idx
     global faiss_vec_idx
     ret = openai_call_embedding(
-        chunks=[Chunk(text=question, vec=[], title='')])
+        chunks=[Chunk(text=question, vec=[], title='', tag='')])
     question_vec = ret[0].vec
     gray(f"question embedding generated: {len(question_vec)}")
     idxes = search_vec(faiss_vec_idx, faiss_meta_idx, question_vec, chunk_size)
@@ -444,7 +456,7 @@ def add_uploaded_file(name: str, content: bytes):
     chunks = openai_call_embedding(chunks)
 
     # Create a new document and add to the Docs instance
-    doc = Doc(id=0, title=name, chunks=chunks)
+    doc = Doc(id=0, title=name, chunks=chunks, tag='')
     _ = data.add_doc(doc)
     init_faiss()
 
@@ -459,19 +471,40 @@ def delete_file(idx: int):
         init_faiss()
 
 
-def ask_question(username, question: str, doc_ids: list[int], chunk_size=50) -> str:
-    chunks = search_chunk2(question, doc_ids, chunk_size)
+def ask_question(
+        username, question: str,
+        doc_ids: list[int],
+        doc_tags: list[str],
+        chunk_size=50) -> str:
+    chunks = search_chunk2(question, doc_tags, doc_ids, chunk_size)
     return openai_call_completion(username, question, chunks)
 
 
-def filter_vec(doc_ids: list[int]) -> dict[int, faiss.IndexFlatL2]:
-    gray(f'filter by docs {doc_ids}')
-    if doc_ids is None or len(doc_ids) == 0:
-        return faiss_vec_by_doc_id
+def filter_vec(doc_ids: list[int], doc_tags: list[str]) -> dict[int, faiss.IndexFlatL2]:
+    gray(f'filter by docs {doc_ids}, {doc_tags}')
+    filtered = []
+    if not doc_ids and doc_tags:
+        # filter only by tags
+        for doc in data.docs:
+            if doc.tag in doc_tags:
+                filtered.append(doc.id)
+    elif not doc_tags and doc_ids:
+        # filter only by ids
+        for doc in data.docs:
+            if doc.id in doc_ids:
+                filtered.append(doc.id)
+    elif not doc_ids and not doc_tags:
+        # both empty
+        filtered = [doc.id for doc in data.docs]
+    else:
+        for doc in data.docs:
+            if doc.id in doc_ids and doc.tag in doc_tags:
+                filtered.append(doc.id)
 
     ret = {}
+    # filter by doc_id
     for k, v in faiss_vec_by_doc_id.items():
-        if k in doc_ids:
+        if k in filtered:
             ret[k] = v
 
     gray(f'filtered: {ret.keys()}')

@@ -46,6 +46,7 @@ def file_list():
     li = "".join(
         f"""<li>
         <span style="font-weight: bold;">{doc.id}</span>.
+        <span style="font-weight: bold;color=green">{doc.tag}</span>.
         <span style="font-weight: bold;">{doc.title}</span>
     </li>"""
         for doc in data.docs
@@ -64,7 +65,13 @@ async def manage_files(token: str = Query(...)):
             <button type="submit">x</button>
         </form>
         <span style="font-weight: bold;">{doc.id}</span>.
+        <span style="font-weight: bold; color:green;">[{doc.tag}]</span>
         <span style="font-weight: bold;">{doc.title}</span>
+        <form style="display: inline;" action="/add-tag?token={token}" method="post">
+            <input type="hidden" name="id" value="{doc.id}">
+            <input type="text" name="tag" placeholder="add tag" size="10" required>
+        <button type="submit">Add Tag</button>
+    </form>
     </li>"""
         for doc in data.docs
     )
@@ -77,6 +84,15 @@ async def manage_files(token: str = Query(...)):
             <button id="submitButton" type="submit">Add</button>
         </form>
         """)
+
+
+@app.post("/add-tag")
+async def add_tag(id: str = Form(...), token=Query(...), tag: str = Form(...)):
+    check(token)
+    global data
+    print('add-tag', id, tag)
+    data.add_doc_tag(int(id), tag)
+    return redirect("/files", token)
 
 
 @app.post("/delete-file")
@@ -167,6 +183,9 @@ async def search_chunk(token: str = Query(...)):
 
                 <label for="doc_ids">Doc IDs:</label>
                 <input id="doc_ids" name="doc_ids" type="text" placeholder="e.g. 1,2,3"/>
+
+                <label for="doc_ids">Doc Tags:</label>
+                <input id="doc_tags" name="doc_tags" type="text" placeholder="e.g. tag1,tag2"/>
             </div>
 
             <button id="submitButton" type="submit">Submit</button>
@@ -180,14 +199,16 @@ async def search_chunk(token: str = Query(...)):
 @app.post("/search-results", response_class=HTMLResponse)
 async def search_results(
         doc_ids: str = Form(...),
+        doc_tags: str = Form(...),
         token: str = Query(...),
         query: str = Form(...),
         chunk_size: int = Form(...)):
     check(token)
     doc_ids_num = parse_comma_separated_ints(doc_ids)
+    doc_tags = [x.strip() for x in doc_tags.split(",") if x.strip()]
 
-    ret = utils.search_chunk2(query, doc_ids_num, chunk_size)
-    results = [f"{r.text} ({r.title})" for r in ret]
+    ret = utils.search_chunk2(query, doc_tags, doc_ids_num, chunk_size)
+    results = [f"{r.text} [{r.tag}] ({r.title})" for r in ret]
     results_html = "".join(
         f"<li>{result}</li>" for result in results)
     return html_template(token, f"""
@@ -230,9 +251,11 @@ async def submit_question(
         query: str = Form(...),
         token: str = Query(...),
         chunk_size: int = Form(...),
-        doc_ids: str = Form(...)):
+        doc_ids: str = Form(...),
+        doc_tags: str = Form(...)):
     doc_ids_num = parse_comma_separated_ints(doc_ids)
-    answer = utils.ask_question(check(token), query, doc_ids_num, chunk_size)
+    answer = utils.ask_question(
+        check(token), query, doc_tags, doc_ids_num, chunk_size)
     utils.data.add_chat(token, "usr: " + query)
     utils.data.add_chat(token, "sys: " + answer)
     return redirect("/ask-question", token)
