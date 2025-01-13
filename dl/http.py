@@ -7,6 +7,8 @@ import signal
 
 app = FastAPI()
 
+# Middleware to log requests
+
 
 @app.get("/", response_class=HTMLResponse)
 async def login():
