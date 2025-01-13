@@ -69,7 +69,7 @@ async def manage_files(token: str = Query(...)):
         <span style="font-weight: bold;">{doc.title}</span>
         <form style="display: inline;" action="/add-tag?token={token}" method="post">
             <input type="hidden" name="id" value="{doc.id}">
-            <input type="text" name="tag" placeholder="add tag" size="10" required>
+            <input type="text" name="tag" placeholder="add tag" size="7" required>
         <button type="submit">Tag</button>
     </form>
     </li>"""
