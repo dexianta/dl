@@ -45,8 +45,8 @@ async def main_menu(token: str = Query(...)):
 def file_list():
     li = "".join(
         f"""<li>
-        <span style="font-weight: bold;">{doc.id}</span>.
-        <span style="font-weight: bold;color=green">{doc.tag}</span>.
+        <span style="font-weight: bold;">{doc.id}</span>
+        <span style="font-weight: bold;color:green;">{doc.tag}</span>
         <span style="font-weight: bold;">{doc.title}</span>
     </li>"""
         for doc in data.docs
@@ -64,13 +64,13 @@ async def manage_files(token: str = Query(...)):
             <input type="hidden" name="id" value="{doc.id}">
             <button type="submit">x</button>
         </form>
-        <span style="font-weight: bold;">{doc.id}</span>.
-        <span style="font-weight: bold; color:green;">[{doc.tag}]</span>
+        <span style="font-weight: bold;">{doc.id}</span>
+        <span style="font-weight: bold; color:green;">{doc.tag}</span>
         <span style="font-weight: bold;">{doc.title}</span>
         <form style="display: inline;" action="/add-tag?token={token}" method="post">
             <input type="hidden" name="id" value="{doc.id}">
             <input type="text" name="tag" placeholder="add tag" size="7" required>
-        <button type="submit">Tag</button>
+        <button type="submit">tag</button>
     </form>
     </li>"""
         for doc in data.docs
