@@ -1,5 +1,7 @@
 from dataclasses import dataclass, asdict
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from docx.oxml.table import CT_Tbl
+from docx.oxml.text.paragraph import CT_P
 from docx import Document
 from io import BytesIO
 from typing import Tuple
@@ -174,11 +176,41 @@ text_splitter = RecursiveCharacterTextSplitter(
 )
 
 
+def docx_to_str(doc: Document) -> str:
+    output = []
+
+    tblcnt = 0
+    for element in doc.element.body:
+        if isinstance(element, CT_P):  # Paragraph element
+            paragraph = element.text.strip()
+            if paragraph:  # Exclude empty paragraphs
+                output.append(paragraph)
+        elif isinstance(element, CT_Tbl):  # Table element
+            if tblcnt < len(doc.tables):
+                table = doc.tables[tblcnt]
+                tblcnt += 1
+                markdown_table = []
+                for row_idx, row in enumerate(table.rows):
+                    cells = [cell.text.strip().replace('\n', ' ')
+                             for cell in row.cells]
+                    markdown_table.append('| ' + ' | '.join(cells) + ' |')
+
+                    # Add a header separator after the first row
+                    if row_idx == 0:
+                        markdown_table.append(
+                            '|' + '|'.join(['---' for _ in cells]) + '|')
+
+                output.append('\n'.join(markdown_table))
+
+    # Combine all extracted content into a single string
+    return output
+
+
 def parse_docx(file: bytes) -> list[Chunk]:
     # Partition the PDF into structured elements
     doc_str = BytesIO(file)
 
-    text = [p.text for p in Document(doc_str).paragraphs if p.text != '']
+    text = docx_to_str(Document(doc_str))
 
     chunks = [
         chunk.page_content for chunk in text_splitter.create_documents(text)
