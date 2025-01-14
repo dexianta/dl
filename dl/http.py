@@ -208,7 +208,7 @@ async def search_results(
     doc_tags = [x.strip() for x in doc_tags.split(",") if x.strip()]
 
     ret = utils.search_chunk2(query, doc_tags, doc_ids_num, chunk_size)
-    results = [f"{r.text} [{r.tag}] ({r.title})" for r in ret]
+    results = [f"{r.text} {r.tag} ({r.title})" for r in ret]
     results_html = "".join(
         f"<li>{result}</li>" for result in results)
     return html_template(token, f"""
